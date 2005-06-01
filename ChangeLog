@@ -1,0 +1,95 @@
+0.08:
+	* more openssl-binary temp file changes.  on second failure (which
+	  was previously missing a new method), it also propogates up the
+	  error message now, instead of dying, to be more consistent with
+	  the other DSA checkers, which never die
+
+0.07:
+	* bugfix: use URI::Fetch 0.02, not "0.02" in quotes
+
+	* bugfix: don't set cache if no cache
+
+0.06:
+	* wrap Crypt::OpenSSL::DSA verify in eval {} as it can croak
+
+	* use URI::Fetch, which does caching and proper HTTP behavior
+
+	* let user get/set cache, which is then propogated down to URI::Fetch
+
+	* optionally use new pure-perl version of Crypt::DSA which now
+	  does ASN.1 serialization/deserialization in both signatures and
+	  public keys.  brings total options of DSA verify techniques up
+	  to 3.
+
+	* tmpdir option (and smart auto-configuration) for people using
+  	  OpenSSL binaries to verify signatures.
+
+	* security fix when doing DSA checks with system openssl binary
+	  (was previously parsing the wrong status)
+
+	* misc reported bugfixes
+
+0.05:
+        * stupid push_url_arg bugfix
+
+	* doc fix in example code (no post_grant in check_url)
+
+0.04:
+        * tons more docs:  in both ClaimedIdentity and VerifiedIdentity
+
+	* Consumer now observes atom/rss/foaf/foafmaker at the same time
+	  as openid.server, and passes it along to VerifiedIdentity,
+	  where it's accessible, and VerifiedIdentity knows whether or
+	  not those urls are under the trusted one or not, and makes them
+	  differently available to callers
+
+	* bug fixes, doc fixes
+
+	* post_grant moved to user_setup_url, not check_url
+
+	* delayed_return added to check_url
+
+0.03:
+        * setting args in constructor was broken
+
+        * renamed get_claimed_identity to just claimed_identity to be
+          consistent
+
+	* all methods now croak if called with too many arguments
+
+	* added ClaimedIdentity->identity_server to get just one,
+	  as selected by plugin, instead of array of them all
+
+0.02:
+	* POD docs for Net/OpenID/Consumer.pm
+
+	* accepts CGI, Apache, Apache::Request, and CODE arguments now for
+	GET argument retrievers, in addition to just HASH references
+
+	* openid.server auto-discovery only happens within first <head> tag
+
+	* if using Crypt::OpenSSL::DSA, now requires 0.12 due to bugs found
+	  in 0.11.
+
+	* DSA verification using OpenSSL binary no longer spews "Verification OK"
+	  to stdout
+
+0.01:
+	* fetching of page (with configurable user agent object; I
+	  recommend you use LWPx::ParanoidAgent, now available on CPAN)
+	  and returning a "ClaimedIdentity" object of what the user claims
+	  they are, but is not verified yet
+
+	* auto-discovery of openid servers
+
+	* hook to let you provide your subref to do openid server
+	  selection, given multiple options
+
+        * generation of "check" URL to send user to to get redirect
+
+	* reading of response parameters, returning either a
+	  user_setup_url or a VerifiedIdentity object (doing DSA
+	  validation with either Crypt::OpenSSL::DSA or your openssl
+	  binary)
+
+	 * start of JSON responses for javascript UI
