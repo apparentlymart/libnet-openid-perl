@@ -1,0 +1,13 @@
+0.03:
+        * stupid push_url_arg bugfix
+
+	* more tests
+	
+0.02:
+        * checkid_immediate vs checkid_setup mode (handle_page can return
+	  $type of "setup")
+	
+0.01:
+        * initial release.  test suite works.  no example app yet.
+
+	* requires Crypt::DSA or Crypt::OpenSSL::DSA
