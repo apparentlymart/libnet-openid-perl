@@ -7,7 +7,7 @@ use Carp ();
 package Net::OpenID::Server;
 
 use vars qw($VERSION $HAS_CRYPT_DSA $HAS_CRYPT_OPENSSL);
-$VERSION = "0.03";
+$VERSION = "0.04";
 
 use fields (
             'last_errcode',   # last error code we got
@@ -45,8 +45,8 @@ use Digest::SHA1 ();
 
 BEGIN {
     unless ($HAS_CRYPT_OPENSSL = eval "use Crypt::OpenSSL::DSA 0.12; 1;") {
-        unless ($HAS_CRYPT_DSA = eval "use Crypt::DSA (); use Convert::PEM; 1;") {
-            die "You need Crypt::OpenSSL::DSA version 0.12+ -or- Crypt::DSA (ideally 0.13+)\n";
+        unless ($HAS_CRYPT_DSA = eval "use Crypt::DSA (); use Convert::PEM 0.07; 1;") {
+            die "You need Crypt::OpenSSL::DSA version 0.12+ -or- (Crypt::DSA -and- Convert::PEM 0.07+)\n";
         }
     }
 }
@@ -122,6 +122,44 @@ sub args {
     $self->{args};
 }
 
+sub signed_return {
+    my Net::OpenID::Server $self = shift;
+    my %opts = @_;
+    my $identity   = delete $opts{'identity'};
+    my $return_to  = delete $opts{'return_to'};
+    my $trust_root = delete $opts{'trust_root'};  # optional
+    Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
+
+    if ($trust_root) {
+        return undef unless _url_is_under($trust_root, $return_to);
+    }
+
+    my $now = _time_to_w3c();
+    my $plain = join("::",
+                     $now,
+                     "assert_identity",
+                     $identity,
+                     $return_to);
+
+    my $sig = $self->_dsa_sig($plain)
+        or return;
+
+    die "Failed to make signature (has length = " . length($sig) . ")"
+        unless length($sig) >= 45 && length($sig) <= 48;
+
+    my $sig64 = MIME::Base64::encode_base64($sig);
+    chomp $sig64;  # remove \n
+
+    my $ret_url = $return_to;
+    _push_url_arg(\$ret_url,
+                  "openid.mode",            "id_res",
+                  "openid.assert_identity", $identity,
+                  "openid.sig",             $sig64,
+                  "openid.timestamp",       $now,
+                  "openid.return_to",       $return_to);
+    return $ret_url;
+}
+
 # returns ($content_type, $page), where $content_type can be "redirect"
 # in which case a temporary redirect should be done to the URL in $page
 # $content_type can also be "setup", in which case the setup_map variables
@@ -131,7 +169,9 @@ sub args {
 # page using info in $nos->err.
 sub handle_page {
     my Net::OpenID::Server $self = shift;
-    Carp::croak("Too many parameters") if @_;
+    my %opts = @_;
+    my $redirect_for_setup = delete $opts{'redirect_for_setup'};
+    Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
     Carp::croak("handle_page must be called in list context") unless wantarray;
 
     return $self->_page_pubkey
@@ -156,33 +196,13 @@ sub handle_page {
     my $is_identity = $self->_proxy("is_identity", $u, $identity);
     my $is_trusted  = $self->_proxy("is_trusted",  $u, $trust_root, $is_identity);
 
-    # where we'll be returning the user to:
-    my $ret_url = $return_to;
-    _push_url_arg(\$ret_url, "openid.mode", "id_res");
 
     # assertion path:
     if ($is_identity && $is_trusted) {
-        my $now = _time_to_w3c();
-        my $plain = join("::",
-                         $now,
-                         "assert_identity",
-                         $identity,
-                         $return_to);
-
-        my $sig = $self->_dsa_sig($plain)
-            or return;
-
-        die "Failed to make signature (has length = " . length($sig) . ")"
-            unless length($sig) >= 45 && length($sig) <= 48;
-
-        my $sig64 = MIME::Base64::encode_base64($sig);
-        chomp $sig64;  # remove \n
-
-        _push_url_arg(\$ret_url,
-                      "openid.assert_identity", $identity,
-                      "openid.sig",             $sig64,
-                      "openid.timestamp",       $now,
-                      "openid.return_to",       $return_to);
+        my $ret_url = $self->signed_return(
+                                           identity => $identity,
+                                           return_to => $return_to,
+                                           );
         return ("redirect", $ret_url);
     }
 
@@ -195,16 +215,25 @@ sub handle_page {
                       $self->_setup_map("return_to"),   $return_to,
                       $self->_setup_map("is_identity"), $identity,
                       );
+
+    my $setup_url = $self->{setup_url} or Carp::croak("No setup_url defined.");
+    _push_url_arg(\$setup_url, %setup_args);
+
     if ($mode eq "checkid_immediate") {
-        # normal case, with setup URL returned
-        my $setup_url = $self->{setup_url} or Carp::croak("No setup_url defined.");
-        _push_url_arg(\$setup_url, %setup_args);
-        _push_url_arg(\$ret_url, "openid.user_setup_url",  $setup_url);
+        my $ret_url = $return_to;
+        _push_url_arg(\$ret_url, "openid.mode",           "id_res");
+        _push_url_arg(\$ret_url, "openid.user_setup_url", $setup_url);
         return ("redirect", $ret_url);
     } else {
         # the "checkid_setup" mode, where we take control of the user-agent
         # and return to their return_to URL later.
-        return ("setup", \%setup_args);
+
+        if ($redirect_for_setup) {
+            # ... unless the caller just wants us to redirect to their setup page
+            return ("redirect", $setup_url);
+        } else {
+            return ("setup", \%setup_args);
+        }
     }
 }
 
@@ -517,7 +546,7 @@ See below for docs.
 
 =over 4
 
-=item ($type, $data) = $nos->B<handle_page>
+=item ($type, $data) = $nos->B<handle_page>([ %opts ])
 
 Returns a $type and $data, where $type can be:
 
@@ -540,6 +569,46 @@ are as you named them with setup_map.
 
 Otherwise, set the content type to $type and print the page out, the
 contents of which are in $data.
+
+=back
+
+The optional %opts may contain:
+
+=over
+
+=item C<redirect_for_setup>
+
+If set to a true value, signals that you don't want to handle the
+C<setup> return type from handle_page, and you'd prefer it just be
+converted to a C<redirect> type to your already-defined C<setup_url>,
+with the arguments from setup_map already appended.
+
+=back
+
+=item $url = $nos->B<signed_return>( %opts )
+
+Generates a positive identity assertion URL that you'd redirect a user
+to.  Typically this would be after they've completed your setup_url.
+Once trust has been setup, the C<handle_page> method will redirect you
+to this signed return automatically.
+
+The URL generated is the consumer site's return_to URL, with a signed
+identity included in the GET arguments.  The %opts are:
+
+=over
+
+=item C<identity>
+
+Required.  The identity URL to sign.
+
+=item C<return_to>
+
+Required.  The base of the URL being generated.
+
+=item C<trust_Root>
+
+Optional.  If present, the C<return_to> URL will be checked to be within
+("under") this trust_root.  If not, the URL returned will be undef.
 
 =back
 

@@ -1,12 +1,20 @@
+0.04:
+	* add "signed_return" method and docs
+
+	* require Convert::PEM 0.07, which was always required,
+	  but I forgot its version number before
+
+	* add "redirect_for_setup" option on handle_page and docs
+
 0.03:
         * stupid push_url_arg bugfix
 
 	* more tests
-	
+
 0.02:
         * checkid_immediate vs checkid_setup mode (handle_page can return
 	  $type of "setup")
-	
+
 0.01:
         * initial release.  test suite works.  no example app yet.
 
