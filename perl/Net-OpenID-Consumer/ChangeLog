@@ -1,3 +1,6 @@
+0.09-pre:
+        * switch to DH/HMAC protocol, not DSA protocol
+
 0.08:
 	* more openssl-binary temp file changes.  on second failure (which
 	  was previously missing a new method), it also propogates up the
