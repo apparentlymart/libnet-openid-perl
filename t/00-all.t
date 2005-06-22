@@ -6,6 +6,16 @@ use Data::Dumper;
 use Net::OpenID::Server;
 use Crypt::OpenSSL::DSA;
 
+use Math::BigInt;
+for my $num (1..1080) {
+    my $bi = Math::BigInt->new("$num");
+    my $bytes = Net::OpenID::Server::_bi2bytes($bi);
+    my $bi2 = Net::OpenID::Server::_bytes2bi($bytes);
+    is($bi,$bi2);
+    printf "$bi = $bi2\n";
+}
+exit 0;
+
 my ($query_string, %get_vars, $ctype, $content);
 my $parse = sub {
     %get_vars = map { durl($_) } split(/[&=]/, $query_string);
@@ -13,6 +23,7 @@ my $parse = sub {
 
 my $pub_key_file = "test.openid_public.key";
 my $priv_key_file = "test.openid_private.key";
+
 
 my $nos = Net::OpenID::Server->new(
                                    args => \%get_vars,
