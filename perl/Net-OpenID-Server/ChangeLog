@@ -1,3 +1,15 @@
+0.06: (unreleased)
+	* make rand_chars public
+
+	* remove old DSA-based code
+
+	* test suite for new DH/HMAC-based code
+
+0.05:
+        * start implementing the new DH + HMAC-SHA1 spec, instead
+	  of being DSA-based.  The DSA code is still working for now,
+	  and it'll do either protocol, but it'll be removed in time.
+
 0.04:
 	* add "signed_return" method and docs
 
