@@ -5,18 +5,18 @@ use Carp ();
 package Net::OpenID::ClaimedIdentity;
 use fields (
             'identity',  # the canonical URL that was found, following redirects
-            'servers',   # arrayref of author-identity server endpoints, as found in order in file
+            'server',    # author-identity identity server endpoint
             'consumer',  # ref up to the Net::OpenID::Consumer which generated us
+            'delegate',  # the delegated URL actually asserted by the server
             );
 
 sub new {
     my Net::OpenID::ClaimedIdentity $self = shift;
     $self = fields::new( $self ) unless ref $self;
     my %opts = @_;
-    $self->{identity} = delete $opts{identity};
-    $self->{servers}  = delete $opts{servers};
-    $self->{consumer} = delete $opts{consumer};
-    Carp::croak("servers not arrayref") unless ref $self->{servers} eq "ARRAY";
+    for my $f (qw( identity server consumer delegate )) {
+        $self->{$f} = delete $opts{$f};
+    }
     Carp::croak("unknown options: " . join(", ", keys %opts)) if %opts;
     return $self;
 }
@@ -30,13 +30,7 @@ sub claimed_url {
 sub identity_server {
     my Net::OpenID::ClaimedIdentity $self = shift;
     Carp::croak("Too many parameters") if @_;
-    return $self->{consumer}->_pick_identity_server($self->{servers});
-}
-
-sub identity_servers {
-    my Net::OpenID::ClaimedIdentity $self = shift;
-    Carp::croak("Too many parameters") if @_;
-    return @{ $self->{'servers'} };
+    return $self->{server};
 }
 
 sub check_url {
@@ -50,31 +44,31 @@ sub check_url {
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
     Carp::croak("Invalid/missing return_to") unless $return_to =~ m!^https?://!;
 
-    my $ident_server = $self->{consumer}->_pick_identity_server($self->{servers});
-    Carp::croak("No identity server was chosen") unless $ident_server;
+    my $ident_server = $self->{server} or
+        Carp::croak("No identity server");
 
-    # find to index of ident server chosen, so we can pass it back to ourselves
-    # in the return_to URL.
-    my $ident_server_idx = undef;
-    for my $n (0 .. $#{ $self->{servers} }) {
-        $ident_server_idx = $n if $self->{servers}[$n] eq $ident_server;
-    }
-    Carp::croak("Identity server chosen wasn't an option")
-        unless defined $ident_server_idx;
+    # get an assoc (or undef for dumb mode)
+    my $assoc = Net::OpenID::Association($self->{consumer}, $ident_server);
+
+    my $identity_arg = $self->{'delegate'} || $self->{'identity'};
 
     my $curl = $ident_server;
     OpenID::util::push_url_arg(\$curl,
-                               "openid.mode",          ($delayed_ret ? "checkid_setup" : "checkid_immediate"),
-                               "openid.return_to",     $return_to,
-                               "openid.is_identity",   $self->{identity},
-                               ($trust_root ?
-                                ("openid.trust_root",  $trust_root) : ()),
+                               "openid.mode",           ($delayed_ret ? "checkid_setup" : "checkid_immediate"),
+                               "openid.identity",       $identity_arg,
+                               "openid.return_to",      $return_to,
 
-                               # non-spec attributes that this module uses:
-                               ($ident_server_idx != 0 ?
-                                ("oicsr.idx",   $ident_server_idx) : ()),
+                               ($trust_root ?
+                                ("openid.trust_root",   $trust_root) : ()),
+
+                               ($self->{'delegate'} ?
+                                ("oic.identity",        $self->{identity}) : ()),
+
+                               ($assoc ?
+                                ("openid.assoc_handle", $assoc->handle) : ()),
                                );
 
+    $self->{consumer}->_debug("check_url for (del=$self->{delegate}, id=$self->{identity}) = $curl");
     return $curl;
 }
 
@@ -131,19 +125,7 @@ check_url, though.
 =item $id_server = $cident->B<identity_server>
 
 Returns the identity server that will assert whether or not this
-claimed identity is valid, and sign a message saying so.  If there are
-multiple identity servers, the one that this function returns is the
-one decided by L<Net::OpenID::Consumer>'s declared server_selector
-function.
-
-=item @id_servers = $cident->B<identity_servers>
-
-All OpenID identity servers the user has declared, in order defined.
-There will be at least one, though, since a
-Net::OpenID::ClaimedIdentity object is never made for URLs without
-declared identity servers.
-
-Note: There should be no reason you need to use this method.
+claimed identity is valid, and sign a message saying so.
 
 =item $url = $cident->B<check_url>( %opts )
 

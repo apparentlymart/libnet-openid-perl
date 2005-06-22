@@ -4,5 +4,6 @@ MANIFEST
 lib/Net/OpenID/Consumer.pm
 lib/Net/OpenID/VerifiedIdentity.pm
 lib/Net/OpenID/ClaimedIdentity.pm
-t/00-all.t
+lib/Net/OpenID/Association.pm
+t/00-use.t
 META.yml                                 Module meta-data (added by MakeMaker)

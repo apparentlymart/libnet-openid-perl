@@ -3,9 +3,11 @@ WriteMakefile( 'NAME' => 'Net::OpenID::Consumer',
                'VERSION_FROM' => 'lib/Net/OpenID/Consumer.pm',
                'PREREQ_PM'		=> {
                    'LWP::UserAgent' => 0,
+                   'HTTP::Request'  => 0,
                    'MIME::Base64'   => 0,
                    'Digest::SHA1'   => 0,
                    'URI'            => 0,
+                   'Time::Local'    => 0,
                    'URI::Fetch'     => 0.02,
                },
                ($] >= 5.005 ?
