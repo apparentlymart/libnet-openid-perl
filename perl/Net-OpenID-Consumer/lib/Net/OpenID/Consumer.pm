@@ -22,6 +22,8 @@ use fields (
 
 use Net::OpenID::ClaimedIdentity;
 use Net::OpenID::VerifiedIdentity;
+use Net::OpenID::Association;
+
 use MIME::Base64 ();
 use Digest::SHA1 ();
 use Crypt::DH 0.05;

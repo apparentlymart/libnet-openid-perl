@@ -99,12 +99,18 @@ sub _dec_semurl {
 
 sub DisplayOfURL {
     my $url = shift;
+    my $dev_mode = shift;
 
     return $url unless
         $url =~ m!^https?://([^/]+)(/.*)?$!;
 
     my ($host, $path) = ($1, $2);
     $host = lc($host);
+
+    if ($dev_mode) {
+        $host =~ s!^dev\.!!;
+        $host =~ s!:\d+!!;
+    }
 
     $host =~ s/:.+//;
     $host =~ s/^www\.//i;
@@ -117,6 +123,13 @@ sub DisplayOfURL {
     if ($path =~ m!^/~([^/]+)/?$! ||
         $path =~ m!^/(?:users?|members?)/([^/]+)/?$!) {
         return "$1 [$host]";
+    }
+
+    if ($host =~ m!^profile\.(.+)!i) {
+        my $site = $1;
+        if ($path =~ m!^/([^/]+)/?$!) {
+            return "$1 [$site]";
+        }
     }
 
     return $url;
