@@ -362,11 +362,11 @@ sub verified_identity {
 
     my $assoc_handle = $self->args("openid.assoc_handle");
 
-    $self->_debug("verified_identity: assoc_handle: $assoc_handle")
+    $self->_debug("verified_identity: assoc_handle: $assoc_handle");
     my $assoc = Net::OpenID::Association::handle_assoc($self, $server, $assoc_handle);
 
     if ($assoc) {
-        $self->_debug("verified_identity: verifying with found association")
+        $self->_debug("verified_identity: verifying with found association");
         # verify the token
         my $token = "";
         foreach my $p (split(/,/, $signed)) {
@@ -377,7 +377,7 @@ sub verified_identity {
         return $self->_fail("signature_mismatch") unless $sig64 eq $good_sig;
 
     } else {
-        $self->_debug("verified_identity: verifying using HTTP (dumb mode)")
+        $self->_debug("verified_identity: verifying using HTTP (dumb mode)");
         # didn't find an association.  have to do dumb consumer mode
         # and check it with a POST
         my %post = (
