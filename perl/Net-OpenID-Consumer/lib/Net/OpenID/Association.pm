@@ -78,7 +78,7 @@ sub server_assoc {
                 "openid.dh_consumer_public" => OpenID::util::bi2arg($dh->pub_key),
                 );
 
-    my $req = HTTP::Request->(POST => $server);
+    my $req = HTTP::Request->new(POST => $server);
     $req->content(join("&", map { "$_=" . OpenID::util::eurl($post{$_}) } keys %post));
 
     my $ua  = $csr->ua;
@@ -89,12 +89,11 @@ sub server_assoc {
 
     my $content = $res->content;
     my %args = OpenID::util::parse_keyvalue($content);
+    $csr->_debug("Response to associate mode: [$content] parsed = " . join(",", %args));
 
     return $dumb->("unknown_assoc_type") unless $args{'assoc_type'} eq "HMAC-SHA1";
 
     my $stype = $args{'session_type'};
-    my $dh = $stype eq "DH-SHA1";
-
     return $dumb->("unknown_session_type") if $stype && $stype ne "DH-SHA1";
 
     my $issued = $args{'issued'};
@@ -103,7 +102,7 @@ sub server_assoc {
     my $ahandle = $args{'assoc_handle'};
 
     my $secret;
-    if (! $dh) {
+    if ($stype ne "DH-SHA1") {
         $secret = OpenID::util::d64($args{'mac_key'});
     } else {
         my $server_pub = OpenID::util::arg2bi($args{'dh_server_public'});
