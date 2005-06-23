@@ -21,7 +21,6 @@ sub new {
     for my $f (qw( server secret handle replace_after expiry type )) {
         $self->{$f} = delete $opts{$f};
     }
-    Carp::croak("servers not arrayref") unless ref $self->{servers} eq "ARRAY";
     Carp::croak("unknown options: " . join(", ", keys %opts)) if %opts;
     return $self;
 }
@@ -29,13 +28,13 @@ sub new {
 sub handle {
     my $self = shift;
     die if @_;
-    $seff->{'handle'};
+    $self->{'handle'};
 }
 
 sub secret {
     my $self = shift;
     die if @_;
-    $seff->{'secret'};
+    $self->{'secret'};
 }
 
 sub server {
@@ -83,7 +82,7 @@ sub server_assoc {
     $req->content(join("&", map { "$_=" . OpenID::util::eurl($post{$_}) } keys %post));
 
     my $ua  = $self->ua;
-    my $res = $ua->request($request);
+    my $res = $ua->request($req);
 
     # uh, some failure, let's go into dumb mode?
     return $dumb->("http_failure_no_associate") unless $res && $res->is_success;

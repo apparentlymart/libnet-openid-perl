@@ -48,7 +48,7 @@ sub check_url {
         Carp::croak("No identity server");
 
     # get an assoc (or undef for dumb mode)
-    my $assoc = Net::OpenID::Association($self->{consumer}, $ident_server);
+    my $assoc = Net::OpenID::Association::server_assoc($self->{consumer}, $ident_server);
 
     my $identity_arg = $self->{'delegate'} || $self->{'identity'};
 
