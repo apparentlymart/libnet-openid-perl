@@ -17,6 +17,10 @@ sub new {
     for my $f (qw( identity server consumer delegate )) {
         $self->{$f} = delete $opts{$f};
     }
+
+    # lowercase the scheme and hostname
+    $self->{'identity'} =~ s!^(https?://.+?)(/(?:.*))?$!lc($1) . $2!ie;
+
     Carp::croak("unknown options: " . join(", ", keys %opts)) if %opts;
     return $self;
 }
