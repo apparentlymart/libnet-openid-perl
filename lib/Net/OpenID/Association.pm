@@ -62,10 +62,9 @@ sub server_assoc {
 
     # try first from cached association handle
     if (my $handle = $cache->get("shandle:$server")) {
-        my $assoc = handle_assoc($cache, $server, $handle);
+        my $assoc = handle_assoc($csr, $server, $handle);
 
         #FIXME: undef $assoc if it's too old and we need a new one
-
         if ($assoc) {
             $csr->_debug("Found association from cache (handle=$handle)");
             return $assoc;
