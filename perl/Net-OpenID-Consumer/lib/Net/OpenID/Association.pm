@@ -81,7 +81,7 @@ sub server_assoc {
     my $req = HTTP::Request->(POST => $server);
     $req->content(join("&", map { "$_=" . OpenID::util::eurl($post{$_}) } keys %post));
 
-    my $ua  = $self->ua;
+    my $ua  = $csr->ua;
     my $res = $ua->request($req);
 
     # uh, some failure, let's go into dumb mode?
