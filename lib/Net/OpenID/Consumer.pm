@@ -428,7 +428,7 @@ sub hmac_sha1_hex {
     unpack("H*", &hmac_sha1);
 }
 sub hmac_sha1 {
-    hmac($_[0], $_[1], \&sha1, 64);
+    hmac($_[0], $_[1], \&Digest::SHA1::sha1, 64);
 }
 sub hmac {
     my($data, $key, $hash_func, $block_size) = @_;
