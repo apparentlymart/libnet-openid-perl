@@ -387,7 +387,7 @@ sub verified_identity {
                     "openid.sig"          => $sig64,
                     );
 
-        my $req = HTTP::Request->(POST => $server);
+        my $req = HTTP::Request->new(POST => $server);
         $req->content(join("&", map { "$_=" . OpenID::util::eurl($post{$_}) } keys %post));
 
         my $ua  = $self->ua;
