@@ -295,9 +295,9 @@ sub claimed_identity {
 
     # do basic canonicalization
     $url = "http://$url" if $url && $url !~ m!^\w+://!;
-    return $self->_fail("bogus_url", "Invalid URL") unless $url =~ m!^http://!;
+    return $self->_fail("bogus_url", "Invalid URL") unless $url =~ m!^http://!i;
     # add a slash, if none exists
-    $url .= "/" unless $url =~ m!^http://.+/!;
+    $url .= "/" unless $url =~ m!^http://.+/!i;
 
     my $final_url;
 
