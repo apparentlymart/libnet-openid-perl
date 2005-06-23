@@ -63,6 +63,9 @@ sub server_assoc {
     # try first from cached association handle
     if (my $handle = $cache->get("shandle:$server")) {
         my $assoc = handle_assoc($cache, $server, $handle);
+
+        #FIXME: undef $assoc if it's too old and we need a new one
+
         if ($assoc) {
             $csr->_debug("Found association from cache (handle=$handle)");
             return $assoc;
@@ -127,8 +130,8 @@ sub server_assoc {
     my $assoc = Net::OpenID::Association->new( %assoc );
     return $dumb->("assoc_undef") unless $assoc;
 
-    $cache->set("hassoc:$server:$assoc", Storable::freeze(\%assoc));
-    $cache->get("shandle:$server", $ahandle);
+    $cache->set("hassoc:$server:$ahandle", Storable::freeze(\%assoc));
+    $cache->set("shandle:$server", $ahandle);
 
     return $assoc;
 }
