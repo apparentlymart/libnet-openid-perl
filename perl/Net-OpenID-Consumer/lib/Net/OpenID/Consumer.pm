@@ -388,6 +388,7 @@ sub verified_identity {
                     );
 
         my $req = HTTP::Request->new(POST => $server);
+        $req->header("Content-Type" => "application/x-www-form-urlencoded");
         $req->content(join("&", map { "$_=" . OpenID::util::eurl($post{$_}) } keys %post));
 
         my $ua  = $self->ua;
