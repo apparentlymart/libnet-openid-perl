@@ -194,7 +194,7 @@ sub signed_return_url {
     my $identity     = delete $opts{'identity'};
     my $return_to    = delete $opts{'return_to'};
     my $assoc_handle = delete $opts{'assoc_handle'};
-    my $assoc_type   = delete $opts{'assoc_type'} || "HMAC-SHA1";
+    my $assoc_type   = "HMAC-SHA1";  # TODO: function to get type given a handle
     my $trust_root   = delete $opts{'trust_root'};  # optional
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
 
@@ -270,7 +270,6 @@ sub _mode_checkid {
                                                identity => $identity,
                                                return_to => $return_to,
                                                assoc_handle => $self->args("openid.assoc_handle"),
-                                               assoc_type   => $self->args("openid.assoc_type"),
                                                );
         return ("redirect", $ret_url);
     }
@@ -280,9 +279,10 @@ sub _mode_checkid {
     # with a setup URL (the default), or explictly said that we're in control of
     # the user-agent's full window, and we can do whatever we want with them now.
     my %setup_args = (
-                      $self->_setup_map("trust_root"),  $trust_root,
-                      $self->_setup_map("return_to"),   $return_to,
-                      $self->_setup_map("identity"),    $identity,
+                      $self->_setup_map("trust_root"),   $trust_root,
+                      $self->_setup_map("return_to"),    $return_to,
+                      $self->_setup_map("identity"),     $identity,
+                      $self->_setup_map("assoc_handle"), $self->args("openid.assoc_handle"),
                       );
 
     my $setup_url = $self->{setup_url} or Carp::croak("No setup_url defined.");
@@ -299,6 +299,9 @@ sub _mode_checkid {
 
         if ($redirect_for_setup) {
             # ... unless the caller just wants us to redirect to their setup page
+            # and in that case we add post_grant=return since that's implied
+            # in the checkid_setup mode
+            _push_url_arg(\$setup_url, "openid.post_grant", "return");
             return ("redirect", $setup_url);
         } else {
             return ("setup", \%setup_args);
@@ -842,7 +845,12 @@ Required.  The identity URL to sign.
 
 Required.  The base of the URL being generated.
 
-=item C<trust_Root>
+=item C<assoc_handle>
+
+The association handle to use for the signature.  If blank, dumb
+consumer mode is used, and the library picks the handle.
+
+=item C<trust_root>
 
 Optional.  If present, the C<return_to> URL will be checked to be within
 ("under") this trust_root.  If not, the URL returned will be undef.
@@ -974,10 +982,10 @@ When this module gives a consumer site a user_setup_url from your
 provided setup_url, it also has to append a number of get parameters
 onto your setup_url, so your app based at that setup_url knows what it
 has to setup.  Those keys are named, by default, "trust_root",
-"return_to", "post_grant", and "identity".  If you don't like those
-parameter names, this $hashref setup_map lets you change one or more
-of them.  The hashref's keys should be the default values, with values
-being the parameter names you want.
+"return_to", "post_grant", "identity", and "assoc_handle".  If you
+don't like those parameter names, this $hashref setup_map lets you
+change one or more of them.  The hashref's keys should be the default
+values, with values being the parameter names you want.
 
 =item Net::OpenID::Server->rand_chars($len)
 
