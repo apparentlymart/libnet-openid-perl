@@ -194,24 +194,29 @@ sub signed_return_url {
     my $identity     = delete $opts{'identity'};
     my $return_to    = delete $opts{'return_to'};
     my $assoc_handle = delete $opts{'assoc_handle'};
-    my $assoc_type   = "HMAC-SHA1";  # TODO: function to get type given a handle
-    my $trust_root   = delete $opts{'trust_root'};  # optional
-    Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
 
-    if ($trust_root) {
+    # verify the trust_root, if provided
+    if (my $trust_root = delete $opts{'trust_root'}) {
         return undef unless _url_is_under($trust_root, $return_to);
     }
+    Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
 
     my $ret_url = $return_to;
 
     my $c_sec;
-    my $expires;
+    my $invalid_handle;
+
     if ($assoc_handle) {
-        $c_sec = $self->_secret_of_handle($assoc_type, $assoc_handle)
-            or return undef;
-    } else {
+        $c_sec = $self->_secret_of_handle($assoc_handle);
+
+        # tell the consumer that their provided handle is bogus
+        # (or we forgot it) and that they should stop using it
+        $invalid_handle = $assoc_handle unless $c_sec;
+    }
+
+    unless ($c_sec) {
         # dumb consumer mode
-        ($assoc_handle, $c_sec, $expires) = $self->_generate_association($assoc_type);
+        ($assoc_handle, $c_sec, undef) = $self->_generate_association("HMAC-SHA1");
     }
 
     my @sign = qw(mode issued valid_to identity return_to);
@@ -237,6 +242,11 @@ sub signed_return_url {
 
     # include the arguments we didn't sign in the URL
     push @arg, map { ( "openid.$_" => $arg{$_} ) } sort keys %arg;
+
+    # include (unsigned) the handle we're telling the consumer to invalidate
+    if ($invalid_handle) {
+        push @arg, "openid.invalidate_handle" => $invalid_handle;
+    }
 
     # finally include the signature
     push @arg, "openid.sig" => _b64(hmac_sha1($token_contents, $c_sec));
@@ -362,7 +372,7 @@ sub _generate_association {
     my $handle = "$now:$nonce";
     $handle .= ":" . substr(hmac_sha1_hex($handle, $s_sec), 0, 10);
 
-    my $c_sec = $self->_secret_of_handle($type, $handle, 0)
+    my $c_sec = $self->_secret_of_handle($handle)
         or return ();
 
     my $expires = $sec_time + $self->secret_expire_age;
@@ -371,10 +381,10 @@ sub _generate_association {
 
 sub _secret_of_handle {
     my Net::OpenID::Server $self = shift;
-    my ($type, $handle, $no_verify) = @_;
-    die "type unsupported" unless $type eq "HMAC-SHA1";
+    my ($handle, $no_verify) = @_;
 
     my ($time, $nonce, $nonce_sig80) = split(/:/, $handle);
+    return unless $time =~ /^\d+$/ && $nonce && $nonce_sig80;
 
     my $sec_time = $time - ($time % $self->secret_gen_interval);
     my $s_sec = $self->_get_server_secret($sec_time)  or return;
@@ -449,9 +459,9 @@ sub _mode_check_authentication {
 
     my $sig = $self->pargs("openid.sig");
     my $ahandle = $self->pargs("openid.assoc_handle")
-        or return $self->error_page("no_assoc_handle");
+        or return $self->_error_page("no_assoc_handle");
 
-    my $c_sec = $self->_secret_of_handle("HMAC-SHA1", $ahandle)
+    my $c_sec = $self->_secret_of_handle($ahandle)
         or return $self->_error_page("bad_handle");
 
     my $good_sig = _b64(hmac_sha1($token, $c_sec));
@@ -464,7 +474,17 @@ sub _mode_check_authentication {
         $lifetime = 0 if $lifetime < 0;
     }
 
-    return $self->_serialized_props({ 'lifetime' => $lifetime });
+    my $ret = {
+        lifetime => $lifetime,
+    };
+
+    # tell them if a handle they asked about is invalid, too
+    if (my $ih = $self->pargs("openid.invalidate_handle")) {
+        $c_sec = $self->_secret_of_handle($ih);
+        $ret->{"invalidate_handle"} = $ih unless $c_sec;
+    }
+
+    return $self->_serialized_props($ret);
 }
 
 sub _b64 {
