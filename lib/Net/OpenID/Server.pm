@@ -188,6 +188,16 @@ sub post_args {
     $self->{post_args};
 }
 
+sub cancel_return_url {
+    my Net::OpenID::Server $self = shift;
+    my $return_to    = delete $opts{'return_to'};
+    Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
+
+    my $ret_url = $return_to;
+    _push_url_arg(\$ret_url, "openid.mode" => "cancel");
+    return $ret_url;
+}
+
 sub signed_return_url {
     my Net::OpenID::Server $self = shift;
     my %opts = @_;
@@ -874,6 +884,19 @@ consumer mode is used, and the library picks the handle.
 
 Optional.  If present, the C<return_to> URL will be checked to be within
 ("under") this trust_root.  If not, the URL returned will be undef.
+
+=back
+
+=item $url = $nos->B<cancel_return_url>( %opts )
+
+Generates a cancel notice to the return_to URL, if a user
+declines to share their identity.  %opts are:
+
+=over
+
+=item C<return_to>
+
+Required.  The base of the URL being generated.
 
 =back
 
