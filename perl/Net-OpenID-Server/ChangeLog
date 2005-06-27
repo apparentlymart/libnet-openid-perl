@@ -1,3 +1,5 @@
+	* openid.mode=cancel support
+
         * invalidate_handle support
 
 	* fix a call to error_page that should've been _error_page
