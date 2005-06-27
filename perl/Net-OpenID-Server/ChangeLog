@@ -1,3 +1,4 @@
+0.07:
 	* openid.mode=cancel support
 
         * invalidate_handle support
