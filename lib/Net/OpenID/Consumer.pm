@@ -9,7 +9,7 @@ use URI::Fetch 0.02;
 package Net::OpenID::Consumer;
 
 use vars qw($VERSION);
-$VERSION = "0.10-pre";
+$VERSION = "0.10";
 
 use fields (
             'cache',          # the Cache object sent to URI::Fetch
@@ -382,6 +382,7 @@ sub verified_identity {
         # and check it with a POST
         my %post = (
                     "openid.mode"         => "check_authentication",
+                    "openid.assoc_handle" => $assoc_handle,
                     "openid.signed"       => $signed,
                     "openid.sig"          => $sig64,
                     );

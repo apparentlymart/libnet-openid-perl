@@ -9,6 +9,7 @@ WriteMakefile( 'NAME' => 'Net::OpenID::Consumer',
                    'URI'            => 0,
                    'Time::Local'    => 0,
                    'URI::Fetch'     => 0.02,
+                   'Crypt::DH'      => 0.05,
                },
                ($] >= 5.005 ?
                 (ABSTRACT_FROM => 'lib/Net/OpenID/Consumer.pm',

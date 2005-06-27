@@ -56,6 +56,12 @@ sub check_url {
 
     my $identity_arg = $self->{'delegate'} || $self->{'identity'};
 
+    # make a note back to ourselves that we're using a delegate
+    if ($self->{'delegate'}) {
+        OpenID::util::push_url_arg(\$return_to,
+                                   "oic.identity",  $self->{identity});
+    }
+
     my $curl = $ident_server;
     OpenID::util::push_url_arg(\$curl,
                                "openid.mode",           ($delayed_ret ? "checkid_setup" : "checkid_immediate"),
@@ -64,9 +70,6 @@ sub check_url {
 
                                ($trust_root ?
                                 ("openid.trust_root",   $trust_root) : ()),
-
-                               ($self->{'delegate'} ?
-                                ("oic.identity",        $self->{identity}) : ()),
 
                                ($assoc ?
                                 ("openid.assoc_handle", $assoc->handle) : ()),
