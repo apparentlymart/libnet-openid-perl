@@ -1,4 +1,4 @@
-0.06: (unreleased)
+0.06:
 	* make rand_chars public
 
 	* remove old DSA-based code
