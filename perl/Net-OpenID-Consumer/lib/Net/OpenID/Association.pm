@@ -116,13 +116,13 @@ sub server_assoc {
     my $stype = $args{'session_type'};
     return $dumb->("unknown_session_type") if $stype && $stype ne "DH-SHA1";
 
-    my $issued = OpenID::Util::w3c_to_time($args{'issued'})
+    my $issued = OpenID::util::w3c_to_time($args{'issued'})
         or return $dumb->("invalid_issued");
 
-    my $expiry = OpenID::Util::w3c_to_time($args{'expiry'})
+    my $expiry = OpenID::util::w3c_to_time($args{'expiry'})
         or return $dumb->("invalid_expiry");
 
-    my $replace_after = OpenID::Util::w3c_to_time($args{'replace_after'});
+    my $replace_after = OpenID::util::w3c_to_time($args{'replace_after'});
 
     # seconds ahead (positive) or behind (negative) the server is
     my $time_delta = $issued - $recv_time;
