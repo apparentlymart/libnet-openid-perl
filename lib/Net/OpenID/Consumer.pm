@@ -118,6 +118,15 @@ sub ua {
 sub _fail {
     my Net::OpenID::Consumer $self = shift;
     my ($code, $text) = @_;
+
+    $text ||= {
+        'no_identity_server' => "The provided URL doesn't declare its OpenID identity server.",
+        'empty_url' => "No URL entered.",
+        'bogus_url' => "Invalid URL.",
+        'no_head_tag' => "URL provided doesn't seem to have a head tag.",
+        'url_fetch_err' => "Error fetching the provided URL.",
+    }->{$code};
+
     $self->{last_errcode} = $code;
     $self->{last_errtext} = $text;
 
@@ -278,7 +287,7 @@ sub _find_openid_server {
     my $sem_info = $self->_find_semantic_info($url, $final_url_ref) or
         return;
 
-    return $self->_fail("no_identity_servers") unless $sem_info->{"openid.server"};
+    return $self->_fail("no_identity_server") unless $sem_info->{"openid.server"};
     $sem_info->{"openid.server"};
 }
 
@@ -302,10 +311,10 @@ sub claimed_identity {
     my $final_url;
 
     my $sem_info = $self->_find_semantic_info($url, \$final_url) or
-        return $self->_fail("no_head_info", "No information found in head.");
+        return;
 
     my $id_server = $sem_info->{"openid.server"} or
-        return $self->_fail("no_identity_servers");
+        return $self->_fail("no_identity_server");
 
     return Net::OpenID::ClaimedIdentity->new(
                                              identity => $final_url,
@@ -355,9 +364,8 @@ sub verified_identity {
     my $sem_info = $self->_find_semantic_info($real_ident, \$final_url);
     return $self->_fail("unexpected_url_redirect") unless $final_url eq $real_ident;
 
-    my $server = $sem_info->{"openid.server"};
-    return $self->_fail("no_identity_server")
-        unless $server;
+    my $server = $sem_info->{"openid.server"} or
+        return $self->_fail("no_identity_server");
 
     # if openid.delegate was used, check that it was done correctly
     if ($a_ident ne $real_ident) {
@@ -717,6 +725,24 @@ object, or undef on failure.
 
 Note that this identity is NOT verified yet.  It's only who the user
 claims they are, but they could be lying.
+
+If this method returns undef, you can rely on the following errors
+codes (from $csr->B<errcode>) to decide what to present to the user:
+
+=over 8
+
+=item no_identity_server
+
+=item empty_url
+
+=item bogus_url
+
+=item no_head_tag
+
+=item url_fetch_err
+
+=back
+
 
 =item $csr->B<user_setup_url>( [ %opts ] )
 
