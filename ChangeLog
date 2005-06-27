@@ -1,10 +1,15 @@
+	* respect replace_after and expiry.  do clock compensation
+	  between local clock and server.
+
+	* invalidate_handle support
+
 0.10:
         * handle openid.delegate properly (was losing state because I'd
 	  put a URL parameter onto the wrong URL)
-	
+
 	* copy all signed parameters into POST args in dumb mode,
 	  not a static set (to be future-proof)
-	
+
 0.09:
         * switch to DH/HMAC protocol, not DSA protocol
 

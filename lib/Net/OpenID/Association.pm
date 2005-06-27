@@ -9,7 +9,7 @@ use fields (
             'handle',    # the 255-character-max ASCII printable handle (33-126)
             'replace_after', # unixtime, adjusted, of when we just stop using this handle
             'expiry',        # unixtime, adjusted, of when this association expires
-            'type',      # association type
+            'type',          # association type
             );
 
 use Storable ();
@@ -44,6 +44,20 @@ sub server {
     return $self->{server};
 }
 
+sub usable {
+    my Net::OpenID::Association $self = shift;
+    return 0 unless $self->{'handle'} =~ /^[\x21-\x7e]{1,255}$/;
+    return 0 unless $self->{'expiry'} =~ /^\d+$/;
+    return 0 unless $self->{'secret'};
+
+    my $replace_after = $ainfo->{'replace_after'} || # optional
+                        $ainfo->{'expiry'} - 300;
+
+    my $now = time();
+    return $now < $replace_after;
+}
+
+
 # return a handle for an identity server, or undef if
 # no local storage/cache is available, in which case the caller
 # goes into dumb consumer mode.  will do a POST and allocate
@@ -64,8 +78,7 @@ sub server_assoc {
     if (my $handle = $cache->get("shandle:$server")) {
         my $assoc = handle_assoc($csr, $server, $handle);
 
-        #FIXME: undef $assoc if it's too old and we need a new one
-        if ($assoc) {
+        if ($assoc && $assoc->usable) {
             $csr->_debug("Found association from cache (handle=$handle)");
             return $assoc;
         }
@@ -93,6 +106,7 @@ sub server_assoc {
     # uh, some failure, let's go into dumb mode?
     return $dumb->("http_failure_no_associate") unless $res && $res->is_success;
 
+    my $recv_time = time();
     my $content = $res->content;
     my %args = OpenID::util::parse_keyvalue($content);
     $csr->_debug("Response to associate mode: [$content] parsed = " . join(",", %args));
@@ -102,9 +116,19 @@ sub server_assoc {
     my $stype = $args{'session_type'};
     return $dumb->("unknown_session_type") if $stype && $stype ne "DH-SHA1";
 
-    my $issued = $args{'issued'};
-    my $expiry = $args{'expiry'};
-    my $replace_after = $args{'replace_after'};
+    my $issued = OpenID::Util::w3c_to_time($args{'issued'})
+        or return $dumb->("invalid_issued");
+
+    my $expiry = OpenID::Util::w3c_to_time($args{'expiry'})
+        or return $dumb->("invalid_expiry");
+
+    my $replace_after = OpenID::Util::w3c_to_time($args{'replace_after'});
+
+    # seconds ahead (positive) or behind (negative) the server is
+    my $time_delta = $issued - $recv_time;
+    $expiry -= $time_delta;
+    $replace_after -= $time_delta if $replace_after;
+
     my $ahandle = $args{'assoc_handle'};
 
     my $secret;
@@ -122,8 +146,8 @@ sub server_assoc {
                  server => $server,
                  secret => $secret,
                  type   => $args{'assoc_type'},
-                 expiry        => $expiry,
-                 replace_after => $replace_after,
+                 expiry         => $expiry,
+                 replace_after  => $replace_after,
                  );
 
     my $assoc = Net::OpenID::Association->new( %assoc );
@@ -145,6 +169,8 @@ sub handle_assoc {
         return undef;
     };
 
+    return $dumb->("no_handle") unless $handle;
+
     my $cache = $csr->cache;
     return $dumb->("no_cache") unless $cache;
 
@@ -157,20 +183,11 @@ sub handle_assoc {
     return Net::OpenID::Association->new( %$param );
 }
 
-
-sub _usable_assoc {
-    my $ainfo = shift;
-    return 0 unless ref $ainfo eq "HASH";
-    return 0 unless $ainfo->{'assoc_handle'} =~ /^[\x21-\x7e]{1,255}$/;
-    return 0 unless $ainfo->{'expiry'};
-    return 0 unless $ainfo->{'secret'};
-
-    my $replace_after = $ainfo->{'replace_after'} || # optional
-                        $ainfo->{'expiry'} - 300;
-
-    my $now = time();
-    return 0 unless $now > $replace_after;
-    return 1;
+sub invalidate_handle {
+    my ($csr, $server, $handle) = @_;
+    my $cache = $csr->cache
+        or return;
+    $cache->set("hassoc:$server:$ahandle", "");
 }
 
 sub _default_dh {

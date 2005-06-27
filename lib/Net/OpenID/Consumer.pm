@@ -9,7 +9,7 @@ use URI::Fetch 0.02;
 package Net::OpenID::Consumer;
 
 use vars qw($VERSION);
-$VERSION = "0.10";
+$VERSION = "0.11-pre";
 
 use fields (
             'cache',          # the Cache object sent to URI::Fetch
@@ -27,7 +27,7 @@ use Net::OpenID::Association;
 use MIME::Base64 ();
 use Digest::SHA1 ();
 use Crypt::DH 0.05;
-use Time::Local qw(timegm);
+use Time::Local;
 use HTTP::Request;
 
 sub new {
@@ -394,6 +394,12 @@ sub verified_identity {
 	    $post{"openid.$param"} = $self->args("openid.$param");
 	}
 
+        # if the server told us our handle as bogus, let's ask in our
+        # check_authentication mode whether that's true
+        if (my $ih = $self->args("openid.invalidate_handle")) {
+            $post{"openid.invalidate_handle"} = $ih;
+        }
+
         my $req = HTTP::Request->new(POST => $server);
         $req->header("Content-Type" => "application/x-www-form-urlencoded");
         $req->content(join("&", map { "$_=" . OpenID::util::eurl($post{$_}) } keys %post));
@@ -406,6 +412,12 @@ sub verified_identity {
 
         my $content = $res->content;
         my %args = OpenID::util::parse_keyvalue($content);
+
+        # delete the handle from our cache
+        if (my $ih = $args{'invalidate_handle'}) {
+            Net::OpenID::Association::invalidate_handle($self, $server, $ih);
+        }
+
         return $self->_fail("naive_verify_failed_return") unless $args{'lifetime'};
     }
 
@@ -523,7 +535,7 @@ sub w3c_to_time {
 
     my $time;
     eval {
-        $time = timegm($6, $5, $4, $3, $2 - 1, $1);
+        $time = Time::Local::timegm($6, $5, $4, $3, $2 - 1, $1);
     };
     return 0 if $@;
     return $time;
