@@ -50,8 +50,8 @@ sub usable {
     return 0 unless $self->{'expiry'} =~ /^\d+$/;
     return 0 unless $self->{'secret'};
 
-    my $replace_after = $ainfo->{'replace_after'} || # optional
-                        $ainfo->{'expiry'} - 300;
+    my $replace_after = $self->{'replace_after'} || # optional
+                        $self->{'expiry'} - 300;
 
     my $now = time();
     return $now < $replace_after;
@@ -187,7 +187,7 @@ sub invalidate_handle {
     my ($csr, $server, $handle) = @_;
     my $cache = $csr->cache
         or return;
-    $cache->set("hassoc:$server:$ahandle", "");
+    $cache->set("hassoc:$server:$handle", "");
 }
 
 sub _default_dh {
