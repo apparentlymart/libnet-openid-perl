@@ -44,6 +44,12 @@ sub server {
     return $self->{server};
 }
 
+sub expired {
+    my Net::OpenID::Association $self = shift;
+    my $now = time();
+    return $now > $self->{'expiry'};
+}
+
 sub usable {
     my Net::OpenID::Association $self = shift;
     return 0 unless $self->{'handle'} =~ /^[\x21-\x7e]{1,255}$/;
