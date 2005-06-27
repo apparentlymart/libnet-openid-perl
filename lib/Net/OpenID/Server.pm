@@ -190,7 +190,9 @@ sub post_args {
 
 sub cancel_return_url {
     my Net::OpenID::Server $self = shift;
-    my $return_to    = delete $opts{'return_to'};
+
+    my %opts = @_;
+    my $return_to = delete $opts{'return_to'};
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
 
     my $ret_url = $return_to;
