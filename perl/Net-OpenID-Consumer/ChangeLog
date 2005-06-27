@@ -1,3 +1,6 @@
+	* document common error codes from claimed_identity, and
+	  cleanup some error handling/codes
+
 	* support openid.mode=cancel
 
 	* respect replace_after and expiry.  do clock compensation
