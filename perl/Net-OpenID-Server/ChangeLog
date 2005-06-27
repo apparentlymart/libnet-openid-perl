@@ -1,3 +1,11 @@
+        * invalidate_handle support
+
+	* fix a call to error_page that should've been _error_page
+
+	* _secret_of_handle now only takes an assoc_handle, not
+	  also an assoc_type, as an assoc_handle should always
+	  self-imply its type
+
 0.06:
 	* make rand_chars public
 
