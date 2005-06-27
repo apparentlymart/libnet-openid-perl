@@ -1,4 +1,8 @@
-0.09-pre:
+0.10:
+	* copy all signed parameters into POST args in dumb mode,
+	  not a static set (to be future-proof)
+	
+0.09:
         * switch to DH/HMAC protocol, not DSA protocol
 
 0.08:

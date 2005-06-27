@@ -9,7 +9,7 @@ use URI::Fetch 0.02;
 package Net::OpenID::Consumer;
 
 use vars qw($VERSION);
-$VERSION = "0.09";
+$VERSION = "0.10-pre";
 
 use fields (
             'cache',          # the Cache object sent to URI::Fetch
@@ -382,14 +382,16 @@ sub verified_identity {
         # and check it with a POST
         my %post = (
                     "openid.mode"         => "check_authentication",
-                    "openid.identity"     => $a_ident,
-                    "openid.assoc_handle" => $assoc_handle,
-                    "openid.issued"       => $self->args("openid.issued"),
-                    "openid.valid_to"     => $self->args("openid.valid_to"),
-                    "openid.return_to"    => $returnto,
                     "openid.signed"       => $signed,
                     "openid.sig"          => $sig64,
                     );
+
+	# and copy in all signed parameters that we don't already have into %post
+	foreach my $param (split(/,/, $signed)) {
+	    next unless $param =~ /^\w+$/;
+	    next if $post{"openid.$param"};
+	    $post{"openid.$param"} = $self->args("openid.$param");
+	}
 
         my $req = HTTP::Request->new(POST => $server);
         $req->header("Content-Type" => "application/x-www-form-urlencoded");
