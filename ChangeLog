@@ -1,3 +1,5 @@
+	* support openid.mode=cancel
+
 	* respect replace_after and expiry.  do clock compensation
 	  between local clock and server.
 

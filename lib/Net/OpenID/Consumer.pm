@@ -315,6 +315,10 @@ sub claimed_identity {
                                              );
 }
 
+sub user_cancel {
+    my Net::OpenID::Consumer $self = shift;
+    return $self->args("openid.mode") eq "cancel";
+}
 
 sub user_setup_url {
     my Net::OpenID::Consumer $self = shift;
@@ -618,6 +622,8 @@ Net::OpenID::Consumer - library for consumers of OpenID identities
 
   if (my $setup_url = $csr->user_setup_url) {
        # redirect/link/popup user to $setup_url
+  } elsif ($csr->user_cancel) {
+       # restore web app state to prior to check_url
   } elsif (my $vident = $csr->verified_identity) {
        my $verified_url = $vident->url;
        print "You are $verified_url !";
@@ -736,6 +742,16 @@ In any case, the identity server can do whatever it wants, so don't
 depend on this.
 
 =back
+
+=item $csr->B<user_cancel>
+
+Returns true if the user declined to share their identity, false
+otherwise.  (This function is literally one line: returns true if
+"openid.mode" eq "cancel")
+
+It's then your job to restore your app to where it was prior to
+redirecting them off to the user_setup_url, using the other query
+parameters that you'd sent along in your return_to URL.
 
 =item $csr->B<verified_identity>
 
