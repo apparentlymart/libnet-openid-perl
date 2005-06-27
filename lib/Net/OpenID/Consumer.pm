@@ -379,6 +379,10 @@ sub verified_identity {
 
     if ($assoc) {
         $self->_debug("verified_identity: verifying with found association");
+
+        return $self->_fail("expired_association")
+            if $assoc->expired;
+
         # verify the token
         my $token = "";
         foreach my $p (split(/,/, $signed)) {
