@@ -1,3 +1,13 @@
+0.08:
+        * security fix, as pointed out by meepbear: check_authentication
+	  shouldn't honor signature verification requests using
+	  assoc_handles that were given out in associate requests.  that
+	  means that we must be able to distinguish (internally) handles
+	  that were given out to "dumb" consumbers (stateless) vs. ones we
+	  gave out in associate requests.
+
+	  for more information, see:
+	      http://lists.danga.com/pipermail/yadis/2005-July/001144.html
 0.07:
 	* openid.mode=cancel support
 

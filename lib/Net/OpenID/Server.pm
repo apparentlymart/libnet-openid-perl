@@ -7,7 +7,7 @@ use Carp ();
 package Net::OpenID::Server;
 
 use vars qw($VERSION);
-$VERSION = "0.07";
+$VERSION = "0.08";
 
 use fields (
             'last_errcode',   # last error code we got
@@ -228,7 +228,8 @@ sub signed_return_url {
 
     unless ($c_sec) {
         # dumb consumer mode
-        ($assoc_handle, $c_sec, undef) = $self->_generate_association("HMAC-SHA1");
+        ($assoc_handle, $c_sec, undef) = $self->_generate_association(type => "HMAC-SHA1",
+                                                                      dumb => 1);
     }
 
     my @sign = qw(mode issued valid_to identity return_to);
@@ -371,7 +372,10 @@ sub _get_server_secret {
 # returns ($assoc_handle, $secret, $expires)
 sub _generate_association {
     my Net::OpenID::Server $self = shift;
-    my $type = shift;
+    my %opts = @_;
+    my $type = delete $opts{type};
+    my $dumb = delete $opts{dumb} || 0;
+    Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
     die unless $type eq "HMAC-SHA1";
 
     my $now = time();
@@ -381,10 +385,12 @@ sub _generate_association {
         or Carp::croak("server_secret didn't return a secret given what should've been a valid time ($sec_time)\n");
 
     my $nonce = _rand_chars(20);
+    $nonce = "STLS.$nonce" if $dumb;  # flag nonce as stateless
+
     my $handle = "$now:$nonce";
     $handle .= ":" . substr(hmac_sha1_hex($handle, $s_sec), 0, 10);
 
-    my $c_sec = $self->_secret_of_handle($handle)
+    my $c_sec = $self->_secret_of_handle($handle, dumb => $dumb)
         or return ();
 
     my $expires = $sec_time + $self->secret_expire_age;
@@ -393,15 +399,26 @@ sub _generate_association {
 
 sub _secret_of_handle {
     my Net::OpenID::Server $self = shift;
-    my ($handle, $no_verify) = @_;
+    my ($handle, %opts) = @_;
+
+    my $dumb_mode = delete $opts{'dumb'}      || 0;
+    my $no_verify = delete $opts{'no_verify'} || 0;
+    Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
 
     my ($time, $nonce, $nonce_sig80) = split(/:/, $handle);
     return unless $time =~ /^\d+$/ && $nonce && $nonce_sig80;
 
+    # check_authentication mode only verifies signatures made with
+    # dumb (stateless == STLS) handles, so if that caller requests it,
+    # don't return the secrets here of non-stateless handles
+    return if $dumb_mode && $nonce !~ /^STLS\./;
+
     my $sec_time = $time - ($time % $self->secret_gen_interval);
     my $s_sec = $self->_get_server_secret($sec_time)  or return;
-    length($nonce)       == 20 or return;
-    length($nonce_sig80) == 10 or return;
+
+    length($nonce)       == ($dumb_mode ? 25 : 20) or return;
+    length($nonce_sig80) == 10                     or return;
+
     return unless $no_verify || $nonce_sig80 eq substr(hmac_sha1_hex("$time:$nonce", $s_sec), 0, 10);
 
     return hmac_sha1($handle, $s_sec);
@@ -419,7 +436,7 @@ sub _mode_associate {
     # default value of HMAC-SHA1
 
     my ($assoc_handle, $secret, $expires) =
-        $self->_generate_association($assoc_type);
+        $self->_generate_association(type => $assoc_type);
 
     # make expires absolute (it can be relative)
     $expires += $now unless $expires > 1000000000;
@@ -473,7 +490,7 @@ sub _mode_check_authentication {
     my $ahandle = $self->pargs("openid.assoc_handle")
         or return $self->_error_page("no_assoc_handle");
 
-    my $c_sec = $self->_secret_of_handle($ahandle)
+    my $c_sec = $self->_secret_of_handle($ahandle, dumb => 1)
         or return $self->_error_page("bad_handle");
 
     my $good_sig = _b64(hmac_sha1($token, $c_sec));
