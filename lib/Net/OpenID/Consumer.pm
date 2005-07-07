@@ -9,7 +9,7 @@ use URI::Fetch 0.02;
 package Net::OpenID::Consumer;
 
 use vars qw($VERSION);
-$VERSION = "0.11";
+$VERSION = "0.12-pre";
 
 use fields (
             'cache',          # the Cache object sent to URI::Fetch
@@ -272,6 +272,18 @@ sub _find_semantic_info {
             $ret->{"atom"} = $1;
             next;
         }
+    }
+
+    # map the 4 entities that the spec asks for
+    my $emap = {
+        'lt' => '<',
+        'gt' => '>',
+        'quot' => '"',
+        'amp' => '&',
+    };
+    foreach my $k (keys %$ret) {
+        next unless $ret->{$k};
+        $ret->{$k} =~ s/&(\w+);/$emap->{$1} || ""/eg;
     }
 
     $self->_debug("semantic info ($url) = " . join(", ", %$ret));

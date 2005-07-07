@@ -1,3 +1,5 @@
+	* expand entities in link rel
+
 	* reject cached association validation if expiry is in past
 
 0.11:
