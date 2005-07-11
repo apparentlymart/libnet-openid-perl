@@ -7,7 +7,7 @@ use Carp ();
 package Net::OpenID::Server;
 
 use vars qw($VERSION);
-$VERSION = "0.08";
+$VERSION = "0.09-pre";
 
 use fields (
             'last_errcode',   # last error code we got
@@ -30,8 +30,7 @@ use fields (
                                # to login/setup trust/etc.
 
             'setup_map',       # optional hashref mapping some/all standard keys that would be added to
-                               # setup_url to your preferred names.  the standard keys are:
-                               # "trust_root", "return_to", "post_grant", and "is_identity"
+                               # setup_url to your preferred names. 
 
             'get_args',        # thing to get get args
             'post_args',       # thing to get post args
@@ -39,6 +38,8 @@ use fields (
             'server_secret',    # subref returning secret given $time
             'secret_gen_interval',
             'secret_expire_age',
+
+	    'compat',          # version 1.0 compatibility flag (otherwise only sends 1.1 parameters)
             );
 
 use URI;
@@ -62,11 +63,17 @@ sub new {
     $opts{'secret_gen_interval'} ||= 86400;
     $opts{'secret_expire_age'}   ||= 86400 * 14;
 
+    # use compatibility mode until 30 days from July 10, 2005
+    unless (defined $opts{'compat'}) {
+	$opts{'compat'} = time() < 1121052339 + 86400*30 ? 1 : 0;
+    }
+
     $self->$_(delete $opts{$_})
         foreach (qw(
                     get_user is_identity is_trusted
                     setup_url setup_map server_secret
                     secret_gen_interval secret_expire_age
+		    compat
                     ));
 
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
@@ -79,6 +86,7 @@ sub is_trusted   { &_getsetcode; }
 
 sub setup_url   { &_getset; }
 sub setup_map   { &_getset; }
+sub compat      { &_getset; }
 
 sub server_secret       { &_getset; }
 sub secret_gen_interval { &_getset; }
@@ -232,17 +240,23 @@ sub signed_return_url {
                                                                       dumb => 1);
     }
 
-    my @sign = qw(mode issued valid_to identity return_to);
+    my @sign = qw(mode identity return_to);
     my $now = time();
     my %arg = (
                mode         => "id_res",
-               issued       => _time_to_w3c($now),
-               valid_to     => _time_to_w3c($now + 60),  # TODO: make 60 configurable?
                identity     => $identity,
                return_to    => $return_to,
                assoc_handle => $assoc_handle,
                signed       => join(",", @sign),
                );
+
+    # compatibility mode with version 1.0 of the protocol which still
+    # had absolute dates
+    if ($self->{compat}) {
+        $arg{issued}   = _time_to_w3c($now);
+        $arg{valid_to} = _time_to_w3c($now + 3600);
+        push @sign, "issued", "valid_to";
+    }
 
     my @arg; # arguments we'll append to the URL
 
@@ -321,10 +335,6 @@ sub _mode_checkid {
         # and return to their return_to URL later.
 
         if ($redirect_for_setup) {
-            # ... unless the caller just wants us to redirect to their setup page
-            # and in that case we add post_grant=return since that's implied
-            # in the checkid_setup mode
-            _push_url_arg(\$setup_url, "openid.post_grant", "return");
             return ("redirect", $setup_url);
         } else {
             return ("setup", \%setup_args);
@@ -438,13 +448,20 @@ sub _mode_associate {
     my ($assoc_handle, $secret, $expires) =
         $self->_generate_association(type => $assoc_type);
 
-    # make expires absolute (it can be relative)
-    $expires += $now unless $expires > 1000000000;
+    # make absolute form of expires
+    my $exp_abs = $expires > 1000000000 ? $expires : $expires + $now;
 
-    $prop{'assoc_type'}   = $assoc_type;
-    $prop{'assoc_handle'} = $assoc_handle;
-    $prop{'expiry'}       = _time_to_w3c($expires);
-    $prop{'issued'}       = _time_to_w3c($now);
+    # make relative form of expires
+    my $exp_rel = $exp_abs - $now;
+
+    $prop{'assoc_type'}      = $assoc_type;
+    $prop{'assoc_handle'}    = $assoc_handle;
+    $prop{'replace_after_s'} = $exp_rel;
+
+    if ($self->{compat}) {
+        $prop{'expiry'}   = _time_to_w3c($exp_abs);
+        $prop{'issued'}   = _time_to_w3c($now);
+    }
 
     if ($self->pargs("openid.session_type") eq "DH-SHA1") {
 
@@ -495,17 +512,19 @@ sub _mode_check_authentication {
 
     my $good_sig = _b64(hmac_sha1($token, $c_sec));
 
-    my $lifetime = 0;
-    if ($sig eq $good_sig) {
-        my $valid_to = _w3c_to_time($self->pargs("openid.valid_to"));
-        my $now = time;
-        $lifetime = $valid_to - $now - 1;   # assume we took a second
-        $lifetime = 0 if $lifetime < 0;
-    }
+    my $is_valid = $sig eq $good_sig;
 
     my $ret = {
-        lifetime => $lifetime,
+        is_valid => $is_valid ? "true" : "false",
     };
+
+    if ($self->{compat}) {
+        $ret->{lifetime} = 3600;
+        $ret->{WARNING} = 
+            "The lifetime parameter is deprecated and will " .
+            "soon be removed.  Use is_valid instead.  " .
+            "See openid.net/specs.bml.";
+    }
 
     # tell them if a handle they asked about is invalid, too
     if (my $ih = $self->pargs("openid.invalidate_handle")) {
@@ -792,7 +811,6 @@ Net::OpenID::Server - library for consumers of OpenID identities
     is_identity  => \&is_identity,
     is_trusted   => \&is_trusted
     setup_url    => "http://example.com/pass-identity.bml",
-    setup_map    => { "post_grant" => "do_after_grant" },
   );
 
   # From your OpenID server endpoint:
@@ -1044,7 +1062,7 @@ When this module gives a consumer site a user_setup_url from your
 provided setup_url, it also has to append a number of get parameters
 onto your setup_url, so your app based at that setup_url knows what it
 has to setup.  Those keys are named, by default, "trust_root",
-"return_to", "post_grant", "identity", and "assoc_handle".  If you
+"return_to", "identity", and "assoc_handle".  If you
 don't like those parameter names, this $hashref setup_map lets you
 change one or more of them.  The hashref's keys should be the default
 values, with values being the parameter names you want.
