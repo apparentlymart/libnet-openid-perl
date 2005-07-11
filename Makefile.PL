@@ -1,7 +1,7 @@
 use ExtUtils::MakeMaker;
 WriteMakefile( 'NAME' => 'Net::OpenID::Server',
                'VERSION_FROM' => 'lib/Net/OpenID/Server.pm',
-               'PREREQ_PM'		=> {
+               'PREREQ_PM' => {
                    'URI'            => 0,
                    'MIME::Base64'   => 0,
                    'Digest::SHA1'   => 0,
