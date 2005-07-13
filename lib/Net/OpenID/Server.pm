@@ -454,9 +454,9 @@ sub _mode_associate {
     # make relative form of expires
     my $exp_rel = $exp_abs - $now;
 
-    $prop{'assoc_type'}      = $assoc_type;
-    $prop{'assoc_handle'}    = $assoc_handle;
-    $prop{'replace_after_s'} = $exp_rel;
+    $prop{'assoc_type'}   = $assoc_type;
+    $prop{'assoc_handle'} = $assoc_handle;
+    $prop{'expires_in'}   = $exp_rel;
 
     if ($self->{compat}) {
         $prop{'expiry'}   = _time_to_w3c($exp_abs);
