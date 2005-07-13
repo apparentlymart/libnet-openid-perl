@@ -240,15 +240,8 @@ FOAF XML documents that were also found in their HTML's E<lt>headE<gt>
 section.  The short versions will only return a URL if they're below
 the root URL that was verified.  If you want to get at the user's
 declared rss/atom/foaf, even if it's on a different host or parent
-directory, use the delcared_* versions, which don't have the safety
+directory, use the delcared_* versions, which don't have the additional
 checks.
-
-To be extra clear: we're assuming that if they own the root URL, they
-also own any documents below it.  So if their Atom/RSS/FOAF is below,
-you can just trust it and use it.  If it's declared as some off-site
-XML document, you can't be sure they're not just faking owning it.
-(you'd have to parse document-specific tags to indicate that they also
-own the root URL you've verified)
 
 2005-05-24:  A future module will take a Net::OpenID::VerifiedIdentity
 object and create an OpenID profile object so you don't have to

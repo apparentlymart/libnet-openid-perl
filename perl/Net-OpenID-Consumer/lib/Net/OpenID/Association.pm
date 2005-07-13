@@ -7,9 +7,8 @@ use fields (
             'server',    # author-identity identity server endpoint
             'secret',    # the secret for this association
             'handle',    # the 255-character-max ASCII printable handle (33-126)
-            'replace_after', # unixtime, adjusted, of when we just stop using this handle
-            'expiry',        # unixtime, adjusted, of when this association expires
-            'type',          # association type
+            'expiry',    # unixtime, adjusted, of when this association expires
+            'type',      # association type
             );
 
 use Storable ();
@@ -19,7 +18,7 @@ sub new {
     my Net::OpenID::Association $self = shift;
     $self = fields::new( $self ) unless ref $self;
     my %opts = @_;
-    for my $f (qw( server secret handle replace_after expiry type )) {
+    for my $f (qw( server secret handle expiry type )) {
         $self->{$f} = delete $opts{$f};
     }
     Carp::croak("unknown options: " . join(", ", keys %opts)) if %opts;
@@ -46,8 +45,7 @@ sub server {
 
 sub expired {
     my Net::OpenID::Association $self = shift;
-    my $now = time();
-    return $now > $self->{'expiry'};
+    return time() > $self->{'expiry'};
 }
 
 sub usable {
@@ -55,12 +53,8 @@ sub usable {
     return 0 unless $self->{'handle'} =~ /^[\x21-\x7e]{1,255}$/;
     return 0 unless $self->{'expiry'} =~ /^\d+$/;
     return 0 unless $self->{'secret'};
-
-    my $replace_after = $self->{'replace_after'} || # optional
-                        $self->{'expiry'} - 300;
-
-    my $now = time();
-    return $now < $replace_after;
+    return 0 if $self->expired;
+    return 1;
 }
 
 
@@ -122,18 +116,22 @@ sub server_assoc {
     my $stype = $args{'session_type'};
     return $dumb->("unknown_session_type") if $stype && $stype ne "DH-SHA1";
 
-    my $issued = OpenID::util::w3c_to_time($args{'issued'})
-        or return $dumb->("invalid_issued");
+    # protocol version 1.1
+    my $expires_in = $args{'expires_in'};
 
-    my $expiry = OpenID::util::w3c_to_time($args{'expiry'})
-        or return $dumb->("invalid_expiry");
+    # protocol version 1.0 (DEPRECATED)
+    if (! $expires_in) {
+        if (my $issued = OpenID::util::w3c_to_time($args{'issued'})) {
+            my $expiry = OpenID::util::w3c_to_time($args{'expiry'});
+            my $replace_after = OpenID::util::w3c_to_time($args{'replace_after'});
 
-    my $replace_after = OpenID::util::w3c_to_time($args{'replace_after'});
+            # seconds ahead (positive) or behind (negative) the server is
+            $expires_in = ($replace_after || $expiry) - $issued;
+        }
+    }
 
-    # seconds ahead (positive) or behind (negative) the server is
-    my $time_delta = $issued - $recv_time;
-    $expiry -= $time_delta;
-    $replace_after -= $time_delta if $replace_after;
+    # between 1 second and 2 years
+    return $dumb->("bogus_expires_in") unless $expires_in > 0 && $expires_in < 63072000;
 
     my $ahandle = $args{'assoc_handle'};
 
@@ -152,8 +150,7 @@ sub server_assoc {
                  server => $server,
                  secret => $secret,
                  type   => $args{'assoc_type'},
-                 expiry         => $expiry,
-                 replace_after  => $replace_after,
+                 expiry => $recv_time + $expires_in,
                  );
 
     my $assoc = Net::OpenID::Association->new( %assoc );

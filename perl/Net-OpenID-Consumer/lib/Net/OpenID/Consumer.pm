@@ -9,15 +9,17 @@ use URI::Fetch 0.02;
 package Net::OpenID::Consumer;
 
 use vars qw($VERSION);
-$VERSION = "0.12-pre";
+$VERSION = "0.11.90"; # pre-12
 
 use fields (
-            'cache',          # the Cache object sent to URI::Fetch
-            'ua',             # LWP::UserAgent instance to use
-            'args',           # how to get at your args
-            'last_errcode',   # last error code we got
-            'last_errtext',   # last error code we got
-            'debug',          # debug flag or codeblock
+            'cache',           # the Cache object sent to URI::Fetch
+            'ua',              # LWP::UserAgent instance to use
+            'args',            # how to get at your args
+            'consumer_secret', # scalar/subref
+            'required_root',   # the default required_root value, or undef
+            'last_errcode',    # last error code we got
+            'last_errtext',    # last error code we got
+            'debug',           # debug flag or codeblock
             );
 
 use Net::OpenID::ClaimedIdentity;
@@ -35,9 +37,11 @@ sub new {
     $self = fields::new( $self ) unless ref $self;
     my %opts = @_;
 
-    $self->{ua} = delete $opts{ua};
-    $self->args  (delete $opts{args}  );
-    $self->cache (delete $opts{cache} );
+    $self->{ua}            = delete $opts{ua};
+    $self->args            ( delete $opts{args}            );
+    $self->cache           ( delete $opts{cache}           );
+    $self->consumer_secret ( delete $opts{consumer_secret} );
+    $self->required_root   ( delete $opts{required_root}   );
 
     $self->{debug} = delete $opts{debug};
 
@@ -45,10 +49,21 @@ sub new {
     return $self;
 }
 
-sub cache {
+sub cache           { &_getset; }
+sub consumer_secret { &_getset; }
+sub required_root   { &_getset; }
+
+sub _getset {
     my Net::OpenID::Consumer $self = shift;
-    $self->{cache} = shift if @_;
-    $self->{cache};
+    my $param = (caller(1))[3];
+    $param =~ s/.+:://;
+
+    if (@_) {
+        my $val = shift;
+        Carp::croak("Too many parameters") if @_;
+        $self->{$param} = $val;
+    }
+    return $self->{$param};
 }
 
 sub _debug {
@@ -316,7 +331,7 @@ sub claimed_identity {
 
     # do basic canonicalization
     $url = "http://$url" if $url && $url !~ m!^\w+://!;
-    return $self->_fail("bogus_url", "Invalid URL") unless $url =~ m!^http://!i;
+    return $self->_fail("bogus_url", "Invalid URL") unless $url =~ m!^https?://!i;
     # add a slash, if none exists
     $url .= "/" unless $url =~ m!^http://.+/!i;
 
@@ -358,7 +373,10 @@ sub user_setup_url {
 
 sub verified_identity {
     my Net::OpenID::Consumer $self = shift;
-    Carp::croak("Too many parameters") if @_;
+    my %opts = @_;
+
+    my $rr = delete $opts{'required_root'} || $self->{required_root};
+    Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
 
     return $self->_fail("bad_mode") unless $self->args("openid.mode") eq "id_res";
 
@@ -371,6 +389,24 @@ sub verified_identity {
     my $signed   = $self->args("openid.signed");
 
     my $real_ident = $self->args("oic.identity") || $a_ident;
+
+    # check that returnto is for the right host
+    return $self->_fail("bogus_return_to") if $rr && $returnto !~ /^\Q$rr\E/;
+
+    # check age/signature of return_to
+    my $now = time();
+    {
+        my ($sig_time, $sig) = split(/\-/, $self->args("oic.time") || "");
+        # complain if more than an hour since we sent them off
+        return $self->_fail("time_expired")   if $sig_time < $now - 3600;
+        # also complain if the signature is from the future by more than 30 seconds,
+        # which compensates for potential clock drift between nodes in a web farm.
+        return $self->_fail("time_in_future") if $sig_time - 30 > $now;
+        # and check that the time isn't faked
+        my $c_secret = $self->_get_consumer_secret($sig_time);
+        my $good_sig = substr(OpenID::util::hmac_sha1_hex($sig_time, $c_secret), 0, 20);
+        return $self->_fail("time_bad_sig") unless $sig eq $good_sig;
+    }
 
     my $final_url;
     my $sem_info = $self->_find_semantic_info($real_ident, \$final_url);
@@ -446,10 +482,10 @@ sub verified_identity {
             Net::OpenID::Association::invalidate_handle($self, $server, $ih);
         }
 
-        return $self->_fail("naive_verify_failed_return") unless $args{'lifetime'};
+        return $self->_fail("naive_verify_failed_return") unless
+            $args{'is_valid'} eq "true" ||  # protocol 1.1
+            $args{'lifetime'} > 0;          # DEPRECATED protocol 1.0
     }
-
-    # TODO: hook to check return to?
 
     $self->_debug("verified identity! = $real_ident");
 
@@ -462,6 +498,26 @@ sub verified_identity {
                                               atom      => $sem_info->{"atom"},
                                               consumer  => $self,
                                               );
+}
+
+sub supports_consumer_secret { 1; }
+
+sub _get_consumer_secret {
+    my Net::OpenID::Consumer $self = shift;
+    my $time = shift;
+
+    my $ss;
+    if (ref $self->{consumer_secret} eq "CODE") {
+        $ss = $self->{consumer_secret};
+    } elsif ($self->{consumer_secret}) {
+        $ss = sub { return $self->{consumer_secret}; };
+    } else {
+        Carp::croak("You haven't defined a consumer_secret value or subref.\n");
+    }
+
+    my $sec = $ss->($time);
+    Carp::croak("Consumer secret too long") if length($sec) > 255;
+    return $sec;
 }
 
 package OpenID::util;
@@ -624,6 +680,8 @@ Net::OpenID::Consumer - library for consumers of OpenID identities
     ua    => LWPx::ParanoidAgent->new,
     cache => Some::Cache->new,
     args  => $cgi,
+    consumer_secret => ...,
+    required_root => "http://site.example.com/",
   );
 
   # a user entered, say, "bradfitz.com" as their identity.  The first
@@ -672,8 +730,9 @@ identity.  More information is available at:
 
 my $csr = Net::OpenID::Consumer->new([ %opts ]);
 
-You can set the C<ua>, C<cache>, and C<args> in the constructor.  See
-the corresponding method descriptions below.
+You can set the C<ua>, C<cache>, C<consumer_secret>, C<required_root>,
+and C<args> in the constructor.  See the corresponding method
+descriptions below.
 
 =back
 
@@ -702,6 +761,27 @@ The $cache object can be anything that has a -E<gt>get($key) and
 -E<gt>set($key,$value) methods.  See L<URI::Fetch> for more
 information.  This cache object is just passed to L<URI::Fetch>
 directly.
+
+=item $nos->B<consumer_secret>($scalar)
+
+=item $nos->B<consumer_secret>($code)
+
+=item $code = $nos->B<consumer_secret>; ($secret) = $code->($time);
+
+The consumer secret is used to generate self-signed nonces for the
+return_to URL, to prevent spoofing.
+
+In the simplest (and least secure) form, you configure a static secret
+value with a scalar.  If you use this method and change the scalar
+value, any outstanding requests from the last 30 seconds or so will fail.
+
+The more robust (but more complicated) form is to supply a subref that
+returns a secret based on the provided I<$time>, a unix timestamp.
+And if one doesn't exist for that time, create, store and return it
+(with appropriate locking so you never return different secrets for
+the same time.)
+
+Your secret may not exceed 255 characters.
 
 =item $csr->B<args>($ref)
 
@@ -732,6 +812,14 @@ my $code = $csr->args;
 
 Without arguments, returns a subref that returns the value given a
 parameter name.
+
+=item $nos->B<required_root>($url_prefix)
+
+=item $url_prefix = $nos->B<required_root>
+
+If provided, this is the required string that all return_to URLs must
+start with.  If it doesn't match, it'll be considered invalid (spoofed
+from another site)
 
 =item $csr->B<claimed_identity>($url)
 
@@ -795,11 +883,22 @@ It's then your job to restore your app to where it was prior to
 redirecting them off to the user_setup_url, using the other query
 parameters that you'd sent along in your return_to URL.
 
-=item $csr->B<verified_identity>
+=item $csr->B<verified_identity>( [ %opts ] )
 
 Returns a Net::OpenID::VerifiedIdentity object, or undef.
 Verification includes double-checking the reported identity URL
 declares the identity server, verifying the signature, etc.
+
+The options in %opts may contain:
+
+=over
+
+=item C<required_root>
+
+Sets the required_root just for this request.  Values returns to its
+previous value afterwards.
+
+=back
 
 =item $csr->B<err>
 
