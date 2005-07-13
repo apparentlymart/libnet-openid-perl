@@ -7,7 +7,7 @@ use Carp ();
 package Net::OpenID::Server;
 
 use vars qw($VERSION);
-$VERSION = "0.08.90"; # 9-pre
+$VERSION = "0.09";
 
 use fields (
             'last_errcode',   # last error code we got
@@ -521,7 +521,7 @@ sub _mode_check_authentication {
 
     if ($self->{compat}) {
         $ret->{lifetime} = 3600;
-        $ret->{WARNING} = 
+        $ret->{WARNING} =
             "The lifetime parameter is deprecated and will " .
             "soon be removed.  Use is_valid instead.  " .
             "See openid.net/specs.bml.";
