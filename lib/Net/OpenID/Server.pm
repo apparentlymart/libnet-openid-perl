@@ -7,7 +7,7 @@ use Carp ();
 package Net::OpenID::Server;
 
 use vars qw($VERSION);
-$VERSION = "0.09-pre";
+$VERSION = "0.08.90"; # 9-pre
 
 use fields (
             'last_errcode',   # last error code we got
