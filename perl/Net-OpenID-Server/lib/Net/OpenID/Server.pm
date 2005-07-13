@@ -247,7 +247,6 @@ sub signed_return_url {
                identity     => $identity,
                return_to    => $return_to,
                assoc_handle => $assoc_handle,
-               signed       => join(",", @sign),
                );
 
     # compatibility mode with version 1.0 of the protocol which still
@@ -258,8 +257,10 @@ sub signed_return_url {
         push @sign, "issued", "valid_to";
     }
 
-    my @arg; # arguments we'll append to the URL
+    # include the list of all fields we'll be signing
+    $arg{signed} = join(",", @sign);
 
+    my @arg; # arguments we'll append to the URL
     my $token_contents = "";
     foreach my $f (@sign) {
         $token_contents .= "$f:$arg{$f}\n";
