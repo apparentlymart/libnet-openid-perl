@@ -48,11 +48,13 @@ sub check_url {
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
     Carp::croak("Invalid/missing return_to") unless $return_to =~ m!^https?://!;
 
+    my $csr = $self->{consumer};
+
     my $ident_server = $self->{server} or
         Carp::croak("No identity server");
 
     # get an assoc (or undef for dumb mode)
-    my $assoc = Net::OpenID::Association::server_assoc($self->{consumer}, $ident_server);
+    my $assoc = Net::OpenID::Association::server_assoc($csr, $ident_server);
 
     my $identity_arg = $self->{'delegate'} || $self->{'identity'};
 
@@ -61,6 +63,13 @@ sub check_url {
         OpenID::util::push_url_arg(\$return_to,
                                    "oic.identity",  $self->{identity});
     }
+
+    # add a HMAC-signed time so we can verify the return_to URL wasn't spoofed
+    my $sig_time = time();
+    my $c_secret = $csr->_get_consumer_secret($sig_time);
+    my $sig = substr(OpenID::util::hmac_sha1_hex($sig_time, $c_secret), 0, 20);
+    OpenID::util::push_url_arg(\$return_to,
+                               "oic.time", "${sig_time}-$sig");
 
     my $curl = $ident_server;
     OpenID::util::push_url_arg(\$curl,
