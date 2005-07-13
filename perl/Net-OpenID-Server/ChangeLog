@@ -1,4 +1,8 @@
+0.09:
 	* version 1.1 of the protocol, with 1.0 as a "compat" option
+	  (where both 1.0 and 1.1 response keys are sent) compat is either
+	  on, off, or unspecified, in which case it's on by default for
+	  one month
 
 0.08:
         * security fix, as pointed out by meepbear: check_authentication
