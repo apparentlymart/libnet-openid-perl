@@ -1,3 +1,4 @@
+0.12:
 	* required_root in constructor/method/validated_identity
 
 	* allow https identities
