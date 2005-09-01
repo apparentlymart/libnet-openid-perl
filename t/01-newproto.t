@@ -26,6 +26,7 @@ my $nos = Net::OpenID::Server->new(
                                    post_args => \%post,
                                    server_secret => "o3kjn3nf9832hf32nfo32nfdo32nro32n29332",
                                    setup_url => "http://server.com/setup.app",
+                                   compat => 1,
                                    );
 ok($nos);
 my ($secret, $ahandle);

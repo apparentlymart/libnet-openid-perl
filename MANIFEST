@@ -2,6 +2,6 @@ Makefile.PL
 ChangeLog
 MANIFEST
 lib/Net/OpenID/Server.pm
-t/00-use.t
+t/00-all.t
 t/01-newproto.t
 META.yml                                 Module meta-data (added by MakeMaker)
