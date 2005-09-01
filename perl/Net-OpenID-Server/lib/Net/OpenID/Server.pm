@@ -7,7 +7,7 @@ use Carp ();
 package Net::OpenID::Server;
 
 use vars qw($VERSION);
-$VERSION = "0.09";
+$VERSION = "0.10";
 
 use fields (
             'last_errcode',   # last error code we got
@@ -30,7 +30,7 @@ use fields (
                                # to login/setup trust/etc.
 
             'setup_map',       # optional hashref mapping some/all standard keys that would be added to
-                               # setup_url to your preferred names. 
+                               # setup_url to your preferred names.
 
             'get_args',        # thing to get get args
             'post_args',       # thing to get post args
@@ -39,7 +39,7 @@ use fields (
             'secret_gen_interval',
             'secret_expire_age',
 
-	    'compat',          # version 1.0 compatibility flag (otherwise only sends 1.1 parameters)
+            'compat',          # version 1.0 compatibility flag (otherwise only sends 1.1 parameters)
             );
 
 use URI;
@@ -65,7 +65,7 @@ sub new {
 
     # use compatibility mode until 30 days from July 10, 2005
     unless (defined $opts{'compat'}) {
-	$opts{'compat'} = time() < 1121052339 + 86400*30 ? 1 : 0;
+        $opts{'compat'} = time() < 1121052339 + 86400*30 ? 1 : 0;
     }
 
     $self->$_(delete $opts{$_})
@@ -73,7 +73,7 @@ sub new {
                     get_user is_identity is_trusted
                     setup_url setup_map server_secret
                     secret_gen_interval secret_expire_age
-		    compat
+                    compat
                     ));
 
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
@@ -806,8 +806,6 @@ Net::OpenID::Server - library for consumers of OpenID identities
   my $nos = Net::OpenID::Server->new(
     get_args     => $cgi,
     post_args    => $cgi,
-    private_key  => \&get_priv_key_from_database,
-    public_key   => "public_key.txt",
     get_user     => \&get_user,
     is_identity  => \&is_identity,
     is_trusted   => \&is_trusted
@@ -845,8 +843,8 @@ identity.  More information is available at:
 
 You can set anything in the constructor options that there are
 getters/setters methods for below.  That includes: get_args,
-post_args, private_key, public_key, get_user, is_identity, is_trusted,
-setup_url, and setup_map.  See below for docs.
+post_args, get_user, is_identity, is_trusted, setup_url, and
+setup_map.  See below for docs.
 
 =back
 
@@ -974,22 +972,6 @@ my $code = $nos->get_args;
 
 Without arguments, returns a subref that returns the value given a
 parameter name.
-
-=item $nos->B<public_key>
-
-Returns scalar with PEM-encoded public key.
-
-=item $nos->B<public_key>($key_arg)
-
-Set the public_key.  $key_arg can be a scalar with the PEM-encoded
-key, a scalar of the filename holding the public key, or a subref
-that returns the public key when requested.
-
-=item $nos->B<private_key>
-
-=item $nos->B<private_key>($key_arg)
-
-Get/set private_key.  Same interface as public_key.
 
 =item $nos->B<get_user>($code)
 
