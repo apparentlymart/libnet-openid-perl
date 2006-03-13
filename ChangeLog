@@ -1,3 +1,6 @@
+	* give callers access to the signed_fields from the verified
+	  identity object
+
 0.12:
 	* required_root in constructor/method/validated_identity
 
