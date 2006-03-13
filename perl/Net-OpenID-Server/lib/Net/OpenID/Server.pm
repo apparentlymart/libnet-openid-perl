@@ -7,7 +7,7 @@ use Carp ();
 package Net::OpenID::Server;
 
 use vars qw($VERSION);
-$VERSION = "0.10";
+$VERSION = "0.11-pre";
 
 use fields (
             'last_errcode',   # last error code we got
@@ -214,6 +214,7 @@ sub signed_return_url {
     my $identity     = delete $opts{'identity'};
     my $return_to    = delete $opts{'return_to'};
     my $assoc_handle = delete $opts{'assoc_handle'};
+    my $extra_fields = delete $opts{'additional_fields'} || {};
 
     # verify the trust_root, if provided
     if (my $trust_root = delete $opts{'trust_root'}) {
@@ -255,6 +256,14 @@ sub signed_return_url {
         $arg{issued}   = _time_to_w3c($now);
         $arg{valid_to} = _time_to_w3c($now + 3600);
         push @sign, "issued", "valid_to";
+    }
+
+    # add in the additional fields
+    foreach my $k (keys %{ $extra_fields }) {
+        die "Invalid extra field: $k" unless
+            $k =~ /^\w+\./;
+        $arg{$k} = $extra_fields->{$k};
+        push @sign, $k;
     }
 
     # include the list of all fields we'll be signing
@@ -497,7 +506,7 @@ sub _mode_check_authentication {
     my $signed = $self->pargs("openid.signed") || "";
     my $token = "";
     foreach my $param (split(/,/, $signed)) {
-        next unless $param =~ /^\w+$/;
+        next unless $param =~ /^[\w\.]+$/;
         my $val = $param eq "mode" ? "id_res" : $self->pargs("openid.$param");
         next unless defined $val;
         next if $val =~ /\n/;
@@ -920,6 +929,12 @@ consumer mode is used, and the library picks the handle.
 
 Optional.  If present, the C<return_to> URL will be checked to be within
 ("under") this trust_root.  If not, the URL returned will be undef.
+
+=item C<additional_fields>
+
+Optional.  If present, must be a hashref with keys starting with "\w+\.".
+All keys and values will be returned in the response, and signed.  This is
+used for OpenID extensions.
 
 =back
 
