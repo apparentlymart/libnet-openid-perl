@@ -1,0 +1,21 @@
+<?page
+wintitle=>openid.delegate
+body<=
+
+<h2>Delegating auth</h2>
+
+<p>It's possible to use somebody else's OpenID server without that server knowing about your website if you also have control of a URL which that other OpenID server will assert for you.</p>
+
+<p>For example, you may want to use your website, <b>http://bob.com/</b>, as your identity, but you don't have the means (or desire) to run an OpenID server.  However, you have a LiveJournal account (say, user "bob"), and you know that LiveJournal provides an OpenID server and that it'll assert that you control <b>http://bob.livejournal.com/</b>.</p>
+
+<p>So, to use bob.com as your identity, but have consumers actually verify http://bob.livejournal.com/, you'd say (on bob.com):</p>
+
+<div class='example'>
+&lt;link rel="openid.server" href="http://www.livejournal.com/openid/server.bml"&gt;
+&lt;link rel="openid.delegate" href="http://bob.livejournal.com/"&gt;
+</div>
+
+<p>Now, when a consumer sees that, it'll talk to openid/server.bml and ask if you're bob.livejournal.com, never mentioning bob.com anywhere on the wire.</p>
+
+<=body
+page?>

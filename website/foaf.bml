@@ -1,0 +1,10 @@
+<h2>Why FOAF?</h2>
+
+Several reasons:
+<ul class='spaced'>
+<li>This way sites don't have to exchange profile info as well... it's already in the FOAF.</li>
+<li>People can put as much or as little (no email address!) in their FOAF.</li>
+<li>People can have multiple FOAF files for different personas and levels of profile sharing.</li>
+<li>We needed a namespace for user identifiers without collisions, and once you go down the road of <tt>user@<b>identityserver.com</b></tt> then people think it's an email address, which is unfortunate.  So instead a URL already prevents collisions.</li>
+<li>Trust systems on top of OpenID can use the FOAF relations to help out with knowledge of the network.</li>
+</ul>

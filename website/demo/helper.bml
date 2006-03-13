@@ -1,0 +1,206 @@
+<?_code
+{
+    use strict;
+    use vars qw(%GET);
+    use LWPx::ParanoidAgent;
+    use Net::OpenID::Consumer;
+    use Cache::FileCache;
+
+    my $cache = new Cache::FileCache({
+	'namespace' => 'OpenID',
+	'default_expires_in' => 600,
+	'cache_root' => '/var/cache/openid-demo',
+    });
+
+    BML::noparse();  # don't expand result
+    my $ua = LWPx::ParanoidAgent->new(timeout => 7);
+    $ua->blocked_hosts(qr/^0\./);
+
+    my $csr = Net::OpenID::Consumer->new(
+					 ua   => $ua,
+					 args => \%GET,
+					 cache => $cache,
+					 consumer_secret => sub {
+					     my $f = "/etc/openid-consumer-secret";
+					     open (F, $f) or die "can't open consumer secret: $f\n";
+					     my $ret = do { local $/; <F>; };
+					     close F;
+					     return $ret;
+					 },
+					 );
+    # AJAX or classic mode?
+    my $classic_mode = $GET{style} eq "classic";
+
+    my $err = sub {
+	if ($classic_mode) {
+	    return "<b>Error:</b> " . ehtml($csr->errtext) . " [" . ehtml($csr->errcode) . "]";
+	} else {
+	    return $csr->json_err;
+	}
+    };
+
+    my $js_page = sub {
+	BML::set_content_type("text/html");
+	return "<html><body><script>\n$_[0]</script></body></html>\n";
+    };
+
+    my $host = $GET{'host'};
+    my $trust_root;
+    my $helper;
+    if ($host =~ /openid\.net/i) {
+	$trust_root = "http://*.openid.net/demo/";
+	$helper = "http://$host/demo/helper.bml";
+    } else {
+	$trust_root = "http://*.danga.com/openid/demo/";
+	$helper = "http://www.danga.com/openid/demo/helper.bml";
+    }
+
+    #
+    # Part 1: user enters their URL.
+    #
+
+    if (my $url = $GET{'openid_url'}) {
+
+	my $claimed_id = $csr->claimed_identity($url)
+	    or return $err->();
+	
+	if ($classic_mode) {
+	    my $check_url = $claimed_id->check_url(
+						   return_to => "$helper?style=classic",
+						   trust_root => $trust_root,
+						   delayed_return => 1,
+						   );
+	    return BML::redirect($check_url);
+	} else {
+	    my $id_server = $claimed_id->identity_server;
+	    my $url       = $claimed_id->claimed_url;
+
+	    my $check_url = $claimed_id->check_url(
+						   return_to => $helper,
+						   trust_root => $trust_root,
+						   );
+
+	    return js_dumper({
+		checkid_immediate_url => $check_url,
+		id_server             => $id_server,
+		clean_identity_url => $url,
+	    });
+	}
+    }
+
+    if ($GET{'openid.mode'} eq "cancel") {
+	if ($classic_mode) {
+	    return "You canceled";
+	}  else {
+	return $js_page->(<<ENDJS
+
+			  window.close();
+
+ENDJS
+			  );
+	    
+	}
+
+    }
+
+    #
+    # Part 2: we get the assertion or setup url
+    #
+
+    if (my $setup = $csr->user_setup_url) {
+	if ($classic_mode) {
+	    return BML::redirect($setup);
+	} else {
+	    my $e_url = js_dumper($setup);
+	    return $js_page->("if (parent.location.host == location.host) parent.OpenID_callback_fail($e_url);\n");
+	}
+    }
+
+    # if no setup URL, we must have a verified identity now.
+
+    my $vident = eval { $csr->verified_identity; };
+    if (! $vident) {
+	if ($@) { $csr->_fail("runtime_error", $@); }
+	my $err = $err->();
+	return $err if $classic_mode;
+	return $js_page->("if (parent.location.host == location.host) parent.OpenID_general_error($err);\n");
+    }
+
+    if ($classic_mode) {
+	return "<b>Identity verified:</b> You are <b>" . ehtml($vident->url) . "</b> at " . 
+	    ehtml($GET{'openid.issued'}) . " with signature " . ehtml($GET{'openid.sig'});
+    } else {
+	my $eidentity = js_dumper($vident->url);
+	my $esig = js_dumper($GET{"openid.sig"});
+	my $ets = js_dumper($GET{"openid.issued"});
+	return $js_page->(<<ENDJS
+
+// the pop-up window case
+if (window.opener) {
+    var pwin = window.opener;
+    if (pwin.OpenID_callback_pass) {
+	    pwin.OpenID_callback_pass($eidentity, $esig, $ets);
+	    window.close();
+    }  else {
+          alert("Error: browser weirdness.  Please report this.");
+    }
+} else if (parent.location.host == location.host) {
+    if (parent.OpenID_callback_pass) {
+	    parent.OpenID_callback_pass($eidentity, $esig, $ets);
+    } else {
+          alert("Error: browser weirdness.  parent location = " + parent.location);
+	  document.write("Please report your browser so we can fix this.");
+    }
+}
+
+ENDJS
+    );
+
+    }
+
+    ############ Utility functions
+
+    sub ehtml
+    {
+	# fast path for the commmon case:
+	return $_[0] unless $_[0] =~ /[&\"\'<>]/;
+	my $a = $_[0];
+	$a =~ s/\&/&amp;/g;
+	$a =~ s/\"/&quot;/g;
+	$a =~ s/\'/&\#39;/g;
+	$a =~ s/</&lt;/g;
+	$a =~ s/>/&gt;/g;
+	return $a;
+    }
+
+    sub ejs
+    {      
+	my $a = $_[0];
+	$a =~ s/[\"\'\\]/\\$&/g;
+	$a =~ s/\r?\n/\\n/gs;
+	$a =~ s/\r//;
+	return $a;
+    }
+
+    # Data::Dumper for JavaScript
+    sub js_dumper {
+	my $obj = shift;
+	if (ref $obj eq "HASH") {
+	    my $ret = "{";
+	    foreach my $k (keys %$obj) {
+		$ret .= "$k: " . js_dumper($obj->{$k}) . ",";
+	    }
+	    chop $ret;
+	    $ret .= "}";
+	    return $ret;
+	} elsif (ref $obj eq "ARRAY") {
+	    my $ret = "[" . join(", ", map { js_dumper($_) } @$obj) . "]";
+	    return $ret;
+	} else {
+	    return $obj if $obj =~ /^\d+$/;
+	    return "\"" . ejs($obj) . "\"";
+	}
+    }
+
+}
+_code?>

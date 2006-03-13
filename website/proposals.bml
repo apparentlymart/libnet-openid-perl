@@ -1,0 +1,16 @@
+<?page
+wintitle=>Proposals
+body<=
+
+<h2>Things to perhaps change:</h2>
+
+<ul class='spaced'>
+
+<li>... currently all changes have been merged.</li>
+
+</ul>
+
+
+
+<=body
+page?>

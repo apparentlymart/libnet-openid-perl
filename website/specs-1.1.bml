@@ -1,0 +1,706 @@
+<?_info
+localblocks<=
+
+h2=>{D}<h2><span class='toc'><a href="#toc">^^</a></span>%%DATA%%</h2>
+h3=>{D}<h3><span class='toc'><a href="#toc">^^</a></span>%%DATA%%</h3>
+r=>{S}&#x2192;
+
+btwoc=>{S}<a style='text-decoration:none; color: #000;' href="#btwoc"><abbr title="shortest big-endian two's complement notation">btwoc</abbr></a>
+
+keyvalue=>{S}<a href="#keyvalue">Key/Value pairs</a>
+
+mode<=
+{F}<a name='mode-%%name%%'></a><?h3 Mode: %%name%% h3?>
+<table class='protomode'>
+<tr><td class='h'>Description:</td><td>%%des%%</td></tr>
+<tr><td class='h'>HTTP method:</td><td>%%method%%</td></tr>
+<tr><td class='h'>Flow:</td><td>%%flow%%</td></tr>
+</table>
+
+<h4>Mode '%%name%%': Request parameters</h4>
+<table border='1' cellpadding='5' cellspacing='0' class='reqparam'>
+<tr><th>param</th><th>value</th><th>default</th><th>notes</th></tr>
+%%in%%
+</table>
+
+<h4>Mode '%%name%%': Response parameters</h4>
+<p><i>Response format:</i> %%format%%</p>
+
+<table border='1' cellpadding='5' cellspacing='0' class='reqparam'>
+<tr><th>param</th><th>value</th><th>notes</th></tr>
+%%out%%
+</table>
+
+<h4>Mode '%%name%%': Extra notes</h4>
+%%notes%%
+
+<=mode
+
+lit=>{D}"<span class='literal'>%%DATA%%</span>"
+
+ip<=
+{F}<tr>
+<td><tt>%%name%%</tt></td>
+<td>%%value%%</td>
+<td>%%default%%</td>
+<td>%%notes%%</td>
+</tr>
+<=ip
+
+op<=
+{F}<tr>
+<td><tt>%%name%%</tt></td>
+<td>%%value%%</td>
+<td>%%notes%%</td>
+</tr>
+<=op
+
+obar=>{D}<tr class='obar'><td colspan='3'>%%DATA%%</td></tr>
+ibar=>{D}<tr class='ibar'><td colspan='4'>%%DATA%%</td></tr>
+
+warn=>{D}<span style='color:#d00'><b>WARNING:</b> %%DATA%%</span>
+
+<=localblocks
+_info?><?page
+wintitle=>Specs
+head<=
+<style>
+span.literal { font-family: Courier New; font-weight: bold; font-size: 12pt; color: #ff5600; }
+span.toc { font-size: 12pt; float: right; }
+span.toc a { text-decoration: none; }
+span.toc a:hover { background: #ccc; }
+table.protomode tr { vertical-align: top; }
+table.protomode tr td.h { font-weight: bold; }
+
+table.reqparam th { background: #ffc2a3; color: #000; text-align: left;}
+table.reqparam tr { vertical-align: top; }
+
+tr.obar { background: #eee; }
+tr.ibar { background: #eee; }
+
+</style>
+
+<=head
+body<=
+
+<a name='toc'></a><h2>Table of Contents</h2>
+
+<ul>
+<li><a href="#terms">Terminology</a></li>
+<li>Flow
+   <ul>
+     <li><a href="#linkrel">Marking up identity URL (link rel tags)</a>
+          <ul>
+             <li><a href="#delegate">openid.delegate</a></li>
+          </ul>
+     </li>
+     <li><a href="#submitclaim">Submitting a claimed identity</a></li>
+     <li><a href="#consumerreads">Consumer reads identity URL</a></li>
+     <li><a href="#associate">Consumer associates with server</a></li>
+     <li><a href="#checkmode">Consumer checks identity with server</a></li>
+   </ul>
+</li>
+<li>Modes
+   <ul>
+     <li><a href="#mode-associate">associate</a> - get a shared secret</li>
+     <li><a href="#mode-checkid_immediate">checkid_immediate</a> - immediately get an answer about identity ("yes" or "can't say")</li>
+     <li><a href="#mode-checkid_setup">checkid_setup</a> - pass control of the user-agent to an identity server, waiting to get an answer ("yes" or "cancel")</li>
+     <li><a href="#mode-check_authentication">check_authentication</a> - ask a server to verify a message (for stateless consumers)</li>
+   </ul>
+</li>
+<li><a href="#errors">Error Handling/Responses</a></li>
+<li><a href="#keyvalue">Key/value Response Format</a></li>
+<li><a href="#limits">Limits</a></li>
+<li><a href="#misc">Misc</a></li>
+<li><a href="#ref">References</a></li>
+</ul>
+
+<a name='terms'></a><?h2 Terminology h2?>
+<dl>
+<dt>Identity</dt><dd>An identity in OpenID is just a URL.  The whole flow of the OpenID protocol is about proving that an End User is (owns) a URL.  There is no profile exchange mechanism.  For that, Consumers can read the End User's declared FOAF/XFN/vCARD/Atom/RSS/etc.</dd>
+<dt>End User</dt><dd>The actual human user who wants to prove their identity to another site.</dd>
+<dt>User-Agent</dt><dd>The End User's web browser.  No special plug-ins or JavaScript required.</dd>
+<dt>Consumer</dt><dd>The website that wants to consume the End User's identity.  It's this site that's skeptical of the End User's declared identity and requires proof from the identity URL's declared identity server.</dd>
+<dt>Server</dt><dd>Also called "identity server".  This is the URL that the End User has declared is authorative over their identity.  The End User puts this declaration in their identity URL's HTML &lt;head&gt;.  The consumer discovers the identity server from the user's identity URL, then asks the identity server for cryptographic proof, which is returned as extra GET arguments back to the consumer as the User Agent is redirected around.</dd>
+
+</dl>
+
+<?h2 Overview h2?>
+
+<a name='linkrel'></a><?h3 Step 1: marking up your identity URL h3?>
+
+<p>To use some URL as your identity with OpenID, that URL has to declare which OpenID server is authorative over it.  The host serving a particular URL doesn't need to support OpenID --- the identity URL and OpenID server can be on two totally different services.</p>
+
+<p>Let's imagine your identity URL (your personal website/blog/profile page) is, say, <b>http://bob.com/</b>.  Bob.com's &lt;head&gt; should contain, say:</p>
+
+<div class='example'>
+&lt;link rel="openid.server" href="http://bob.com/openid-server.app"&gt;
+</div>
+
+<p><b>Important notes:</b></p>
+<ul class='spaced'>
+<li>The declared openid.server URL may contain existing query parameters and they must be properly preserved when appending extra query parameters.  (for example: not adding a second question mark if one already exists)</li>
+<li>Taken from the unrelated Pingback spec's link tag restrictions [<a href="http://www.hixie.ch/specs/pingback/pingback#TOC2.2">ref</a>]: <ul>
+<li>The openid.server URL MUST be an <i>absolute URL</i>.  OpenID consumers MUST NOT attempt to resolve relative URLs.</li>
+<li>The openid.server URL MUST NOT include entities other than &amp;amp;, &amp;lt;, &amp;gt;, and &amp;quot;. Other characters that would not be valid in the HTML document or that cannot be represented in the document's character encoding MUST be escaped using the %xx mechanism as described in [<a href="http://www.normos.org/ietf/rfc/rfc2396.txt">RFC2396</a>].</li>
+</ul></li>
+
+
+</ul>
+
+<a name='delegate'></a><?h3 Delegating auth h3?>
+
+<p>It's possible to use somebody else's OpenID server without that server knowing about your website if you also have control of a URL which that other OpenID server will assert for you.</p>
+
+<p>For example, you may want to use your website, <b>http://bob.com/</b>, as your identity, but you don't have the means (or desire) to run an OpenID server.  However, you have a LiveJournal account (say, user "bob"), and you know that LiveJournal provides an OpenID server and that it'll assert that you control <b>http://bob.livejournal.com/</b>.</p>
+
+<p>So, to use bob.com as your identity, but have consumers actually verify http://bob.livejournal.com/, you'd say (on bob.com):</p>
+
+<div class='example'>
+&lt;link rel="openid.server" &nbsp; href="http://www.livejournal.com/openid/server.bml"&gt;<br />
+&lt;link rel="openid.delegate" href="http://bob.livejournal.com/"&gt;
+</div>
+
+<p>Now, when a consumer sees that, it'll talk to openid/server.bml and ask if you're bob.livejournal.com, never mentioning bob.com anywhere on the wire.</p>
+
+<p>The main advantage of this is that you can keep an OpenID identity over many years, even as services come and go.  You just keep changing who you use for your OpenID server, or maybe even run your own.</p>
+
+<p><b>Important notes:</b></p>
+<ul class='spaced'>
+<li>The delegate identity URL must be canonical.  It will not be further processed by the consumer, so be sure it has the "http://" and trailing slash, if there's no path component.</li>
+</ul>
+
+<a name='submitclaim'></a><?h3 Step 2: User submitting a "claimed identity" h3?>
+
+<p>An end user visits a consumer site which says it supports OpenID.  The consumer site says, <i>"Hey, we support OpenID.  You can leave an authenticated comment if you use OpenID."</i>   So the user then types in "<b>bob.com</b>":</p>
+
+<div style='margin: 1em 0 1em 2em; border-left: 2px solid black; padding-left: 1em;'>
+<form>
+<b>Login with your blog URL:</b> <input class='sexy' size='30' value="bob.com" /> <input type='button' value='Login' /><br />
+<i>For example: <tt>happygirl.bloghost.com</tt></i>
+</form>
+</div>
+
+<p>Note that the user can leave off "http://" and the trailing "/".  A consumer must canonicalize the URL, following redirects and noting the final URL.  The final, canonicalized URL is the user's identity URL.</p>
+
+<p>It's also recommend that the form field be named <b>openid_url</b> so browsers auto-complete user's URLs between different sites, in the same way the ecommerce world tends to use conventions like "address1" and "address2".</p>
+
+<p>Also note that this is called a "claimed" identity at this point, until it's been verified.</p>
+
+<a name='consumerreads'></a><?h3 Step 3: Consumer site reads the identity URL h3?>
+
+<p>Now the consumer site must fetch the document (perhaps from cache) that the user entered.  Make note that the user could be malicious and try to make you connect to your internal network, or tarpit you, etc.  You'll probably want to use a paranoid HTTP library like <a href="http://search.cpan.org/~bradfitz/LWPx-ParanoidAgent/">LWPx::ParanoidAgent</a> that protects you from attackers.</p>
+
+<p>The consumer then parses the head section and finds the "openid.server" and the optional "openid.delegate" declarations.  (Note: consumers MUST support openid.delegate)</p>
+
+<a name='associate'></a><?h3 Step 4: [optional] Consumer site establishes a relationship with the server URL h3?>
+
+<p>The protocol supports both a "smart mode" and "dumb mode" to accomodate consumers of differing capabilities.  A smart consumer does a little more work at the beginning to save itself work later, but requires local caching of state information.  A dumb consumer is completely stateless, but requires extra HTTP requests.</p>
+
+<p>It's recommended that a consumer, if possible, first submit an <a href='#mode-associate'>openid.mode=associate</a> POST request to the identity server and get a shared secret.  This shared secret will be used as the HMAC-SHA1 key in future identity check requests.  If a consumer already has a shared secret with that server that hasn't expired, it should keep on using that.</p>
+
+<p>The shared secret can be exchanged either in plain-text or encrypted with a Diffie-Hellman-negotiated secret.  Not that if Diffie-Hellman is used, it's only used in the associate mode.  The identity check modes assume you already have some shared secret, regardless of how you got it.</p>
+
+<a name='checkmode'></a><?h3 Step 5: Consumer checks the identity, via the User-Agent h3?>
+
+<p>Now the consumer constructs a URL to the identity server's <b>openid.mode=checkid_immediate</b> (or <b>checkid_setup</b>) URLs and sends the User-Agent there.  By sending the User-Agent there, the user's cookies and whatever other login credentials are sent back to their trusted identity server.  The server does its work, appends its response onto your supplied return_to URL, and sends the user-agent back at you.</p>
+
+<?h2 Modes h2?>
+<p>Details of each OpenID request type.</p>
+
+<?mode
+name=>associate
+method=>POST
+flow=>consumer <?r?> server <?r?> consumer
+des=>Establish a shared secret between consumer and server.
+format=><?keyvalue?>
+in<=
+
+<?ip
+name=>openid.mode
+value=><?lit associate lit?>
+default=>
+notes=>
+ip?>
+
+<?ip
+name=>openid.assoc_type
+value=>Preferred association type.
+default=><?lit HMAC-SHA1 lit?>
+notes=>Optional.  Currently only one value.  Defaults to HMAC-SHA1.
+ip?>
+
+<?ip
+name=>openid.session_type
+value=>Preferred way to encrypt the shared secret.  Either blank or <?lit DH-SHA1 lit?>
+default=><i>None.</i> (cleartext)
+notes=>Without specifying DH-SHA1, secrets are sent in the clear.  As this is usually between consumer and server, which are usually on good net connections (not, say, WiFi), it's not as risky as you might think to send it in the clear.  However, it's still recommended that you use the DH-SHA1 mode to encrypt the shared secret.
+ip?>
+
+<?ip
+name=>openid.dh_modulus
+value=>base64(<?btwoc?>(p))
+default<=
+<div style='overflow: scroll'>base64(<?btwoc?>(p)), where p = 1551728981814736974712322577637155\
+3991572480196691540447970779531405\
+7629378541917580651227423698188993\
+7278161526466314385615958256881888\
+8995127215884267541995034125870655\
+6549803580104870537681476726513255\
+7470407658574792912915723345106432\
+4509471500722962109419434978392598\
+4760375594985848253359305585439638443</diff>
+<=default
+notes=>The "p" value of Diffie-Hellman, if using DH-SHA1 session_type.  If unspecified, default value is used.
+ip?>
+
+<?ip
+name=>openid.dh_gen
+value=>base64(<?btwoc?>(g))
+default=>base64(<?btwoc?>(g)), where g = 2
+notes=>The "g" value of Diffie-Hellman, if using DH-SHA1 session_type.  If unspecified, default value is used.
+ip?>
+
+<?ip
+name=>openid.dh_consumer_public
+value=>base64(<?btwoc?>(g ^ x mod p))
+default=>
+notes=>The consumer's public key.  Required if using DH-SHA1 session_type.
+ip?>
+
+<=in
+
+out<=
+<?op
+name=>assoc_type
+value=>The association type for the returned handle.
+notes=>The only current mode is <?lit HMAC-SHA1 lit?>, and all consumers must support it, even if the consumer asked for a different type.  Note that in your consumer's cache, mapping assoc_handles to secrets, you must also map the assoc_handle to its assoc_type.
+op?>
+
+<?op
+name=>assoc_handle
+value=>The association handle to be provided in future transaciton.
+notes=>An opaque handle on this association (assoc_type, and shared secret) to be sent to the server later.  See <a href="#limits">limits</a> below on limits of assoc_handle's format.
+op?>
+
+<?op
+name=><s>issued</s>
+value=><s>UTC date on server</s>
+notes=><s>The server's date at time of issuing this association handle.  See <a href="#misc">misc section</a> below for format of date.</s>
+op?>
+
+<?op
+name=><s>replace_after</s>
+value=><s>UTC recommended replacement date</s>
+notes=><s><i>Optional.</i>  The date after which the consumer is advised to fetch a new association.</s>
+op?>
+
+<?op
+name=><s>expiry</s>
+value=><s>UTC expiration date</s>
+notes=><s>The date at which the assoc_handle will no longer work.</s>
+op?>
+
+<?op
+name=>expires_in
+value=>The number of seconds that this association is good for.  (in base10 ascii)
+notes=>Consumers must not reuse this association after this number of seconds has elapsed.
+base 10.
+op?>
+
+<?op
+name=>session_type
+value=>The encryption mode that the server chose.  May be blank/absent, or <?lit DH-SHA1 lit?>.
+notes=>Yes, you can ask for DH-SHA1 encryption and get back a plaintext secret.  If this troubles you, don't use the handle and instead use dumb mode with that server.  (and if somebody sniffed the plaintext secret, it won't matter, since you'll never accept queries using that assoc_handle).  If the server can't do DH, it's probably limited in some way, but using dumb mode is still safe, if not a little slower.
+op?>
+
+<?obar Sent with session_type == "DH-SHA1" obar?>
+
+<?op
+name=>dh_server_public
+value=>base64(<?btwoc?>(g ^ y mod p))
+notes=>The server's Diffie-Hellman public key, if using DH-SHA1 mode.
+op?>
+
+<?op
+name=>enc_mac_key
+value=>base64(SHA1(<?btwoc?>(g^ (xy) mod p)) XOR secret(assoc_handle))
+notes=>The encrypted shared secret, if using DH-SHA1 mode.
+op?>
+
+<?obar Sent with a plaintext session_type obar?>
+
+<?op
+name=>mac_key
+value=>base64(secret(assoc_handle))
+notes=>The plaintext shared secret, when not using DH-SHA1 mode.
+op?>
+<=out
+
+notes<=
+<ul>
+<li>The server chooses the server private key 1 <= y < p-1. The shared DH secret is thus g ^ xy mod p = (g ^ x) ^ y mod p = (g ^ y) ^ x mod p.  For more information, read <a href="http://search.cpan.org/~btrott/Crypt-DH-0.06/lib/Crypt/DH.pm">the Crypt::DH docs</a>.</li>
+<li>The underlying mac_key must be the same length as the output of H, the hash function - in this instance, 160 bits (20 bytes) for SHA1.</li>
+<li>If the server does not support DH, they may ignore the DH fields in the request and reply exactly as to a non-DH request.</li>
+</ul>
+<=notes
+mode?>
+
+<?mode
+name=>checkid_immediate
+method=>GET
+format=>query string arguments
+flow=>consumer <?r?> UA <?r?> server <?r?> UA <?r?> consumer
+des=>Ask a server if a user is who they say they are, getting back immediate a "yes" (with signature) or "can't say" answer.
+notes=><p>checkid_immediate mode is commonly used for "AJAX"-style setups, doing fancy JavaScript stuff.  The more classic mode to check an identity is <a href="#mode-checkid_setup">checkid_setup</a>.</p>
+in<=
+
+<?ip
+name=>openid.mode
+value=><?lit checkid_immediate lit?>
+default=>
+notes=>
+ip?>
+
+<?ip
+name=>openid.identity
+value=>identity URL being checked
+default=>
+notes=>The identity URL the end user is asking the ID server to verify.  The exact question is:  "Does the user logged in to your site own this URL, <i>and</i> do they allow the trust_root (and therefore the return_to URL) to know that?"  (Note that the question isn't "Who's logged in?")  <em style='color:red'>Note:</em> An identity server should only assert to URLs that it manages/produces directly.  If a user wants to assert other URLs outside of that server realm, they should use <a href="#delegate">openid.delegate</a>.
+ip?>
+
+<?ip
+name=>openid.assoc_handle
+value=>The assoc_handle from <a href="#mode-associate">the associate mode</a>.
+default=>
+notes=>Optional.  Consumer must use dumb mode (<a href="#mode-check_authentication">check_authentication mode</a>) if an assoc_handle isn't provided.  Also, if you use an assoc_handle the server doesn't know about, it'll pick its own and you'll have to use dumb mode as well.
+ip?>
+
+<?ip
+name=>openid.return_to
+value=>URL to return back to
+default=>
+notes=>This is where the server is being asked to return the User-Agent back to, with the response in the GET paramaters.  Note that the URL you provide may contain an existing query string, and the server must preserve it when appending the response parameters.  Your OpenID consumer library should most likely add a self-signed nonce with consumer-local timestamp in the return_to URL parameters to prevent replay attacks.  Details of that are left up to the consumer.  However, because the return_to URL is signed by the servers, you can make sure outside parties haven't sent id_res responses to you with mismatching return_to URLs and signatures.
+ip?>
+
+<?ip
+name=>openid.trust_root
+value=>URL for user to trust
+default=>
+notes=><i>(Optional, but recommended)</i> -- The URL which the user will actually see to approve.  The return_to URL must descend from the trust_root, or the identity server will return an error, not a redirect.  Namely, the URL scheme and port must match.  The path, if present, but be equal or below the trust_root, and the domains on both must match, or, the trust_root contain a wildcard like <tt>http://*.livejournal.com</tt> (but the wildcard may only be at the beginning)  You can try to pass things like http://*.com/ or http://*.co.uk/, but any respectable identity server will protect their users from that.  Defaults to return_to URL if absent.
+ip?>
+
+<=in
+out<=
+
+<?obar Always sent: obar?>
+
+<?op
+name=>openid.mode
+value=><?lit id_res lit?>
+notes=>
+op?>
+
+<?obar Sent on failed assertion: obar?>
+
+<?op
+name=>openid.user_setup_url
+value=>URL to send user to complete process
+notes<=
+If the identity assertion fails, the server provides this URL for where the user can do whatever's necessary to fulfill the assertion, be it login, setup permissions, etc. The server should return a URL which doesn't imply anything about what's needed, so the consumer is left in the dark about why the assertion failed.
+<br /><br />
+The identity server handling this user should eventually return them to the return_to URL, acting like a checkid_setup response, with either a <?lit id_res lit?> or <?lit cancel lit?> mode.
+<=notes
+
+op?>
+
+<?obar Sent on positive assertion: obar?>
+
+<?op
+name=>openid.identity
+value=>Identity URL
+notes=>The identity URL being asserted.
+op?>
+
+<?op
+name=>openid.assoc_handle
+value=>Opaque handle
+notes=>The assoc_handle being used to find the HMAC key for the signature
+op?>
+
+<?op
+name=><s>openid.issued</s>
+value=><s>UTC time of server</s>
+notes=>
+op?>
+
+<?op
+name=><s>openid.valid_to</s>
+value=><s>UTC time until this assertion is no longer valid</s>
+notes=>
+op?>
+
+<?op
+name=>openid.return_to
+value=>A verbatim copy of the return_to URL parameter you sent in the request, before the server modified it.
+notes=>
+op?>
+
+<?op
+name=>openid.signed
+value=>List of signed fields
+notes=>Comma-seperated list of parameters that the signature covers, without the "openid." prefix.  For example: <?lit mode,identity,return_to lit?>
+op?>
+
+<?op
+name=>openid.sig
+value=>base64(HMAC(secret(assoc_handle), token_contents)
+notes=>Where "token_contents" is a <a href="#keyvalue">key-value format</a> string of all the signed keys and values in this response (in the same order as listed in the "signed" field).  Consumer will have to recreate the token_contents string prior to checking the signature.
+op?>
+
+<?op
+name=>openid.invalidate_handle
+value=>an association handle
+notes=><i>Optional.</i> If the server didn't accept/recognize your provided assoc_handle for whatever reason, it'll choose its own to use, and copy the one you provided back into invalidate_handle, to tell you to stop using it.  You should then send it along in your check_authentication request to verify it actually should be dropped.
+op?>
+
+<=out
+mode?>
+
+<?mode
+name=>checkid_setup
+method=>GET
+flow=>consumer <?r?> UA <?r?> [server <?r?> UA <?r?>]+ consumer
+format=>query string arguments
+des=>Ask a server if a user is who they say they are, but be willing to wait for the reply (you're passing off control of the User-Agent to the identity server for a period of time).  Returns either a "yes" (with signature) answer, or a "cancel" signal.
+in<=
+<?ip
+name=>openid.mode
+value=><?lit checkid_setup lit?>
+ip?>
+
+<?ip
+name=>openid.identity
+value=>identity URL being checked
+default=>
+notes=>same as checkid_immediate
+ip?>
+
+<?ip
+name=>openid.assoc_handle
+value=>The assoc_handle from <a href="#mode-associate">the associate mode</a>.
+default=>
+notes=>same as checkid_immediate
+ip?>
+
+<?ip
+name=>openid.return_to
+value=>URL to return back to
+default=>
+notes=>same as checkid_immediate
+ip?>
+
+<?ip
+name=>openid.trust_root
+value=>URL for user to trust
+default=>
+notes=>same as checkid_immediate
+ip?>
+<=in
+out<=
+
+<?op
+name=>openid.mode
+value=><?lit id_res lit?> or <?lit cancel lit?>
+notes=>Either <?lit id_res lit?> for a positive assertion, or <?lit cancel lit?> to signal that the user has decided to stop the process and return back where they were.  In a lot of cases, you won't get a cancel mode:  the user will just quit or press back.  But if you do, your app should return to what it was doing.  In the case of a cancel mode, the rest of the response parameters will be absent.
+op?>
+
+<?obar Sent in id_res case: obar?>
+
+<?op
+name=>openid.identity
+value=>
+notes=>same as checkid_immediate
+op?>
+
+<?op
+name=>openid.assoc_handle
+value=>
+notes=>same as checkid_immediate
+op?>
+
+<?op
+name=><s>openid.issued</s>
+value=>
+notes=><s>same as checkid_immediate</s>
+op?>
+
+<?op
+name=><s>openid.valid_to</s>
+value=>
+notes=><s>same as checkid_immediate</s>
+op?>
+
+<?op
+name=>openid.return_to
+value=>
+notes=>same as checkid_immediate
+op?>
+
+<?op
+name=>openid.signed
+value=>
+notes=>same as checkid_immediate
+op?>
+
+<?op
+name=>openid.sig
+value=>
+notes=>same as checkid_immediate
+op?>
+
+<?op
+name=>openid.invalidate_handle
+value=>
+notes=>same as checkid_immediate
+op?>
+
+<=out
+notes=><i>(None)</i>
+mode?>
+
+<?mode
+name=>check_authentication
+method=>POST
+flow=>consumer <?r?> server <?r?> consumer
+format=><?keyvalue?>
+des=>Ask server if a message is valid.  For dumb (stateless) consumers.  <?warn Only validates message with stateless assoc_handles.  Must not ever validate a signature for a assoc_handle whose secret has been shared with anybody. warn?>
+notes=>
+in<=
+
+<?ip
+name=>openid.mode
+value=><?lit check_authentication lit?>
+default=>
+notes=>
+ip?>
+
+<?ip
+name=>openid.assoc_handle
+value=>The assoc_handle from the checkid_* response.  <?warn See warning in description.  Server MUST differentiate its stateless vs. associated assoc_handles, and only offer check_authentication service on the stateless handles warn?>
+default=>
+notes=>If you knew the secret associated with this assoc_handle, this whole HTTP request would be unnecessary.  That's what distinguishes regular mode from dumb mode:  knowledge of an assoc_handle.
+ip?>
+
+<?ip
+name=>openid.sig
+value=>The signature you want to check.
+default=>
+notes=>The openid.sig you got back from the checkid_* request.
+ip?>
+
+<?ip
+name=>openid.signed
+value=>The list of signed items you want to check.
+default=>
+notes=>The openid.signed you got back from the checkid_* request.
+ip?>
+
+<?ip
+name=>openid.*
+value=>
+default=>
+notes=>Send all the openid.* response parameters from the openid.signed list which you'd previously gotten back from a "checkid_*" request, with their values being exactly what you got back. 
+ip?>
+
+<?ip
+name=>openid.invalidate_handle
+value=>
+default=>
+notes=><i>(Optional)</i> If you got an "invalidate_handle" response during a checkid_* request, that means the server didn't recognize your assoc_handle (maybe it lost it) and it had to pick its own.  Which means you have to fallback to dumb mode, since you don't have the shared secret which the server is using.  So while you're doing this check_authentication request, also send along the "invalidate_handle" response from the server, and it'll be checked to see if it actually is missing/bogus (and an attacker isn't just trying to wipe a consumer's cache).
+ip?>
+
+<=in
+out<=
+
+<?op
+name=><s>lifetime</s>
+value=><s>expiry time in ASCII decimal seconds</s>
+notes=><s>0 if invalid signature or signature has expired.   Non-zero for the number of seconds the assertion is still valid.</s>
+op?>
+
+<?op
+name=>is_valid
+value=><?lit true lit?> or <?lit false lit?>
+notes=>Boolean; whether the signature is valid.
+op?>
+
+<?op
+name=>invalidate_handle
+value=>opaque assoc_handle
+notes=>If present, the consumer should delete from its cache the assoc_handle with the provided invalidate_handle value.
+op?>
+
+<=out
+notes=><p>Servers are required to implement this mode for error recovery and dumb consumers (which can't keep state locally), but it's recommended that you use it as little as possible, as it shouldn't be necessary most the time.  It's good for debugging, though, as you develop your consumer library.</p>
+mode?>
+
+
+<a name='errors'></a><?h2 Error Responses h2?>
+<ul class='spaced'>
+<li>This section pertains to protocol/run-time errors, not authentication errors.  Authentication errors are defined in the protocol.</li>
+<li>No error codes for now.  Just unstructured natural language error text.  We might add error codes later.</li>
+<li>if it's a GET request with bad arguments but a valid return_to URL,
+      redirect with  openid.mode=error and openid.error=Error+Text.
+      this will provide a upgrade path in the future, if it comes down
+      to it.  (hopefully it won't)</li>
+<li>if it's a GET request with bad arguments, and no valid
+      return_to, return a "400 Bad Request" with any content-type
+      and error message you want.  (pretty much a lost cause at this point
+      anyway, since it's the browser likely in control....)</li>
+<li>if it's a GET request with no arguments, show a 200
+      text/html saying "This is an OpenID server endpoint.  For more
+      information, see http://openid.net/"  (For people curious what
+      all those &lt;link rel="..."&gt; URLs are)</li>
+<li>if it's a POST request with bad/no arguments, return a 400 Bad request
+      with the key-value response format (see below), with a single key "error" with
+      the natural language text.  (and any additional keys you want)</li>
+
+</ul>
+
+
+<a name='keyvalue'></a><?h2 Key-Value Colon/Newline format h2?>
+<ul class='spaced'>
+<li>Lines of:<div style='margin: 1em 0 1em 2em; border-left: 2px solid black; padding-left: 1em;'><tt><b>some_key:Some value</b></tt></div></li>
+<li>No space before or after the colon</li>
+<li>newline character Unix-style: just ASCII character 10 ("\n")</li>
+<li>newline at end of EACH line, not just between lines</li>
+<li>MIME type is unspecified, but probably just <tt>text/plain</tt>.  Consumers shouldn't break if they see something else, though, as the proper MIME type might change.</li>
+<li>Character encoding is UTF-8, though in practice only ASCII characters will be used in the protocol.  The only time non-ASCII characters would be used is in error responses (see above), but those are recommended to be in English.</li>
+</ul>
+
+
+<a name='limits'></a><?h2 Limits h2?>
+
+<ul class='spaced'>
+<li>Identity URL: <b>255 max bytes</b></li>
+<li>Identity server URL: <b>2047 max bytes</b> (after consumer-added URL arguments, so keep the raw endpoint URL well below this)</li>
+<li>return_to URL: <b>2047 max bytes</b> (after identity-server added URL arguments, so keep the raw return_to URL well below this)</li>
+<li>assoc_handle: <b>255 characters or less</b>, and consist only of ASCII characters in the range 33-126 inclusive (ie printable non-whitespace characters).</li>
+</ul>
+
+<a name='misc'></a><?h2 Misc h2?>
+
+<ul class='spaced'>
+<li><s>Timestamps must be in w3c format, and must be in the UTC timezone, indicated with a "Z".  For example: <tt>2005-05-15T17:11:51Z</tt></s></li>
+<li><a name='btwoc'></a>Most integers are represented in big-endian signed two's complement, Base64 encoded. In other words, <b>btwoc</b> is a function that takes a bigint and returns its shortest big-endian two's complement notation.</li>
+</ul>
+
+<a name='ref'></a><?h2 References h2?>
+
+<ul class='spaced'>
+<li><a href="http://www.faqs.org/rfcs/rfc2104.html">RFC 2104</a> -- HMAC spec</li>
+</ul>
+
+<=body
+page?>

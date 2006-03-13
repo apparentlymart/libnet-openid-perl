@@ -1,0 +1,44 @@
+<?page
+wintitle=>Status
+head<=
+
+<=head
+body<=
+
+<h2>Component Status</h2>
+
+<table cellpadding='4' valign='top' border='1'>
+<tr valign='top'><td><b>Design</b></td><td>99%</td><td>Pretty much settled.</td></tr>
+
+<tr valign='top'><td><b>Website</b></td><td>ongoing</td><td>Will be updated as needed.  Trying to strip it down and encourage use of Wiki now.  Things are happening too quick for me to be the webmaster bottleneck in information flow.</td></tr>
+
+<tr valign='top'><td><b>Docs</b></td><td>95%</td><td>Spec should be documented enough to implement.  Should explain more, though.</td></tr>
+<tr valign='top'><td><b>Graphics for docs</b></td><td>-</td><td>Need help</td></tr>
+
+<tr valign='top'><td><b>LiveJournal OpenID client</b></td><td>-</td><td> </td></tr>
+<tr valign='top'><td><b>LiveJournal OpenID server</b></td><td>100%</td><td>See <a href="http://www.livejournal.com/misc/openid-options.bml">this page</a> to set your LiveJournal options.  It can even be your OpenID server for externally hosted pages.</td></tr>
+
+<tr valign='top'><td><b><a href="demo/">Client HTML/JavaScript example</a></b></td><td>100%</td><td>The BSD-licensed HTML/JavaScript code to do the browser-side half of the OpenID client.</td></tr>
+<tr valign='top'><td><b>Perl: server module</b></td><td>100%</td><td>Use <a href="http://search.cpan.org/search?query=Net%3A%3AOpenID%3A%3AServer&mode=all">Net::OpenID::Server</a> on CPAN to turn your existing app into an OpenID server.</td></tr>
+<tr valign='top'><td><b>Perl: client module</b></td><td>100%</td><td>Use <a href="http://search.cpan.org/search?query=Net%3A%3AOpenID%3A%3AConsumer&mode=all">Net::OpenID::Consumer</a> to use validated OpenID identities in your app.</td></tr>
+</table>
+
+
+<h2>Future?</h2>
+
+<p>I can't make this happen, but perhaps the community can.</p>
+
+<table cellpadding='4' valign='top' border='1'>
+
+<tr valign='top'><td><b>Python: client module</b></td><td>-</td><td>Need help</td></tr>
+
+<tr valign='top'><td><b>Movable Type client/server</b></td><td>45%</td><td>Server support was done by an MT developer in his spare time.  He's porting it to use Net::OpenID::Server.  Consumer support might take more time.</td></tr>
+<tr valign='top'><td><b>WordPress client/server</b></td><td>??</td><td>I don't do the PHP that well.  Perhaps the WP community will do this.</td></tr>
+<tr valign='top'><td><b>...</b></td><td>??</td><td>Let me know if there's other projects I should link here.</td></tr>
+
+
+</table>
+
+
+<=body
+page?>
