@@ -1,0 +1,47 @@
+page<=
+{Fps}<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<?_code
+{
+    return "";
+    my $path = BML::get_uri;
+    if ($path =~ s!^/openid!!) {
+	$path =~ s!index\.bml$!!;
+	#BML::set_status(301);
+	return BML::redirect("http://openid.net$path");
+    }
+    return;
+}
+_code?>
+
+<head>
+   <title>OpenID: %%wintitle%%</title>
+   <link rel='stylesheet' type='text/css' href='openid.css'>
+   <link rel='SHORTCUT ICON' href='./favicon.ico'>
+%%head%%
+</head>
+<body>
+
+<h1><a href="./"><img src='openid-logo.png' width='320' height='120' alt='OpenID' border='0' /></a></h1>
+<div class='warn'><b>Status:</b> stabilized.  consumer/server both live on LiveJournal.com -- <i>Jul 2005</i>.</div>
+<div class='linkbar'>
+<?link ./|About link?>
+<?link specs.bml|Specs link?>
+&mdash;
+<?olink http://www.lifewiki.net/openid/OpenIDStatus|Status olink?>
+<?olink http://lists.danga.com/mailman/listinfo/yadis|Mailing List olink?>
+<?olink http://www.lifewiki.net/openid/|Wiki olink?>
+</div>
+
+%%body%%
+
+<div class='footer'>Brad Fitzpatrick - &lt;brad@danga.com&gt;<br /><b>Questions?</b> &lt;yadis@lists.danga.com&gt;</div>
+</body>
+</html>
+<=page
+
+h1=>{D}<h2>%%data%%</h2>
+
+link=>{RP}[<a href="%%data1%%" class='barlink'>%%data2%%</a>]
+olink=>{RP}[<img src="offsite.gif" hspace='1' width='14' height='11' alt='offsite' /><a href="%%data1%%" class='barlink'>%%data2%%</a>]
+
