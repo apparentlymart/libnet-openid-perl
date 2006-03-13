@@ -23,7 +23,7 @@ _code?>
 <body>
 
 <h1><a href="./"><img src='openid-logo.png' width='320' height='120' alt='OpenID' border='0' /></a></h1>
-<div class='warn'><b>Status:</b> stabilized.  consumer/server both live on LiveJournal.com -- <i>Jul 2005</i>.</div>
+
 <div class='linkbar'>
 <?link ./|About link?>
 <?link specs.bml|Specs link?>
