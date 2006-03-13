@@ -14,6 +14,7 @@ use fields (
 
             'consumer',  # The Net::OpenID::Consumer module which created us
 
+            'signed_fields' ,  # hashref of key->value of things that were signed.  without "openid." prefix
             );
 use URI;
 
@@ -30,7 +31,7 @@ sub new {
         }
     }
 
-    for my $par (qw(foaf foafmaker rss atom)) {
+    for my $par (qw(foaf foafmaker rss atom signed_fields)) {
         $self->$par(delete $opts{$par});
     }
 
@@ -48,7 +49,8 @@ sub display {
     return DisplayOfURL($self->{'identity'});
 }
 
-sub foafmaker { &_getset;        }
+sub foafmaker     { &_getset;        }
+sub signed_fields { &_getset;        }
 
 sub foaf      { &_getset_semurl; }
 sub rss       { &_getset_semurl; }
