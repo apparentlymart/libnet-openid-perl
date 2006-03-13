@@ -1,3 +1,5 @@
+	* basic support for OpenID extensions (2006-03-13)
+
 0.10: (2005-09-01)
         * fix up old docs which mentioned the ancient public_key and
 	  private_key parameters
