@@ -26,11 +26,11 @@ _code?>
 
 <div class='linkbar'>
 <?link ./|About link?>
-<?link specs.bml|Specs link?>
+<?link specs.bml|Spec link?>
 &mdash;
 <?olink http://www.lifewiki.net/openid/OpenIDStatus|Status olink?>
+<?olink http://www.lifewiki.net/openid/OpenIDLibraries|Libraries olink?>
 <?olink http://lists.danga.com/mailman/listinfo/yadis|Mailing List olink?>
-<?olink http://www.lifewiki.net/openid/|Wiki olink?>
 </div>
 
 %%body%%
