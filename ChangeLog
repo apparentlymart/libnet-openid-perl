@@ -1,3 +1,6 @@
+        * go into dumb mode earlier if it's detected that our cache object
+	  isn't working
+
 	* give callers access to the signed_fields from the verified
 	  identity object
 
