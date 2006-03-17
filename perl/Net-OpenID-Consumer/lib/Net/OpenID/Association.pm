@@ -159,6 +159,12 @@ sub server_assoc {
     $cache->set("hassoc:$server:$ahandle", Storable::freeze(\%assoc));
     $cache->set("shandle:$server", $ahandle);
 
+    # now we test that the cache object given to us actually works.  if it
+    # doesn't, it'll also fail later, making the verify fail, so let's
+    # go into stateless (dumb mode) earlier if we can detect this.
+    $cache->get("shandle:$server")
+        or return $dumb->("cache_broken");
+
     return $assoc;
 }
 
