@@ -35,7 +35,7 @@ _code?>
 
 %%body%%
 
-<div class='footer'>Brad Fitzpatrick - &lt;brad@danga.com&gt;<br /><b>Questions?</b> &lt;yadis@lists.danga.com&gt;</div>
+<div class='footer'>Brad Fitzpatrick - &lt;brad@danga.com&gt;<br />David Recordon - &lt;drecordon@verisign.com&gt;<br /><b>Questions?</b> &lt;yadis@lists.danga.com&gt;</div>
 </body>
 </html>
 <=page
