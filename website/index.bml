@@ -23,7 +23,7 @@ body<=
 
 <h2>How's it work?</h2>
 
-<p>Here's the big picture:  (for details see <a href="specs.bml">the specs</a>)</p>
+<p>Here's the big picture:  (for details see <a href="specs.bml">the specs</a> or the <a href='pres/protocolflow-1.1.png'>authentication protocol flow diagram</a>)</p>
 
 
 <ul class='spaced'>
