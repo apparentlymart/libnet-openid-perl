@@ -16,7 +16,7 @@ _code?>
 
 <head>
    <title>OpenID: %%wintitle%%</title>
-   <link rel='stylesheet' type='text/css' href='openid.css'>
+   <link rel='stylesheet' type='text/css' href='/openid.css'>
    <link rel='SHORTCUT ICON' href='./favicon.ico'>
 %%head%%
 </head>
@@ -25,8 +25,8 @@ _code?>
 <h1><a href="./"><img src='openid-logo.png' width='320' height='120' alt='OpenID' border='0' /></a></h1>
 
 <div class='linkbar'>
-<?link ./|About link?>
-<?link specs.bml|Specs link?>
+<?link /|About link?>
+<?link /specs.bml|Specs link?>
 &mdash;
 <?olink http://www.lifewiki.net/openid/OpenIDStatus|Status olink?>
 <?olink http://www.lifewiki.net/openid/OpenIDLibraries|Libraries olink?>
