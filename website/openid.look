@@ -22,7 +22,7 @@ _code?>
 </head>
 <body>
 
-<h1><a href="./"><img src='openid-logo.png' width='320' height='120' alt='OpenID' border='0' /></a></h1>
+<h1><a href="./"><img src='/openid-logo.png' width='320' height='120' alt='OpenID' border='0' /></a></h1>
 
 <div class='linkbar'>
 <?link /|About link?>
@@ -43,5 +43,5 @@ _code?>
 h1=>{D}<h2>%%data%%</h2>
 
 link=>{RP}[<a href="%%data1%%" class='barlink'>%%data2%%</a>]
-olink=>{RP}[<img src="offsite.gif" hspace='1' width='14' height='11' alt='offsite' /><a href="%%data1%%" class='barlink'>%%data2%%</a>]
+olink=>{RP}[<img src="/offsite.gif" hspace='1' width='14' height='11' alt='offsite' /><a href="%%data1%%" class='barlink'>%%data2%%</a>]
 
