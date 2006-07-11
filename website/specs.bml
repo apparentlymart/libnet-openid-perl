@@ -12,7 +12,7 @@ body<=
 
 <h2>Future Drafts</h2>
 <ul>
-<li><a href='/specs/openid-authentication-2_0-05.html'>OpenID Authentication 2.0 - Draft 5</a> (<a href='/specs/openid-authentication-2_0-05.txt'>txt</a>)</li>
+<li><a href='/specs/openid-authentication-2_0-06.html'>OpenID Authentication 2.0 - Draft 6</a> (<a href='/specs/openid-authentication-2_0-06.txt'>txt</a>)</li>
 </ul>
 
 <h2>Past Specs</h2>
@@ -20,6 +20,8 @@ body<=
 <li><a href='/specs/specs-1.1.bml'>OpenID Authentication 1.1 (original format)</a></li>
 <li><a href='/specs/specs-1.0.bml'>OpenID Authentication 1.0 (original format)</a></li>
 </ul>
+
+<p>You can view a listing of all the specs by visiting <a href='/specs/'>http://www.openid.net/specs/</a>.</p>
 
 <=body
 page?>
