@@ -1,0 +1,1244 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en"><head><title>draft: OpenID DTP Version 1.0 Envelopes - Draft 02</title>
+<meta http-equiv="Expires" content="Wed, 09 Aug 2006 18:26:39 +0000">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="description" content="OpenID DTP Version 1.0 Envelopes - Draft 02">
+<meta name="generator" content="xml2rfc v1.30 (http://xml.resource.org/)">
+<style type='text/css'>
+<!--
+    body {
+        font-family: verdana, charcoal, helvetica, arial, sans-serif;
+        margin: 2em;
+        font-size: small ; color: #000000 ; background-color: #ffffff ; }
+    .title { color: #990000; font-size: x-large ;
+        font-weight: bold; text-align: right;
+        font-family: helvetica, monaco, "MS Sans Serif", arial, sans-serif;
+        background-color: transparent; }
+    .filename { color: #666666; font-size: 18px; line-height: 28px;
+        font-weight: bold; text-align: right;
+        font-family: helvetica, arial, sans-serif;
+        background-color: transparent; }
+    td.rfcbug { background-color: #000000 ; width: 30px ; height: 30px ;
+        text-align: justify; vertical-align: middle ; padding-top: 2px ; }
+    td.rfcbug span.RFC { color: #666666; font-weight: bold; text-decoration: none;
+        background-color: #000000 ;
+        font-family: monaco, charcoal, geneva, "MS Sans Serif", helvetica, verdana, sans-serif;
+        font-size: x-small ; }
+    td.rfcbug span.hotText { color: #ffffff; font-weight: normal; text-decoration: none;
+        text-align: center ;
+        font-family: charcoal, monaco, geneva, "MS Sans Serif", helvetica, verdana, sans-serif;
+        font-size: x-small ; background-color: #000000; }
+    /* info code from SantaKlauss at http://www.madaboutstyle.com/tooltip2.html */
+    div#counter{margin-top: 100px}
+
+    a.info{
+        position:relative; /*this is the key*/
+        z-index:24;
+        text-decoration:none}
+
+    a.info:hover{z-index:25; background-color:#990000 ; color: #ffffff ;}
+
+    a.info span{display: none}
+
+    a.info:hover span.info{ /*the span will display just on :hover state*/
+        display:block;
+        position:absolute;
+        font-size: smaller ;
+        top:2em; left:2em; width:15em;
+        padding: 2px ;
+        border:1px solid #333333;
+        background-color:#eeeeee; color:#990000;
+        text-align: left ;}
+
+     A { font-weight: bold; }
+     A:link { color: #990000; background-color: transparent ; }
+     A:visited { color: #333333; background-color: transparent ; }
+     A:active { color: #333333; background-color: transparent ; }
+
+    p { margin-left: 2em; margin-right: 2em; }
+    p.copyright { font-size: x-small ; }
+    p.toc { font-size: small ; font-weight: bold ; margin-left: 3em ;}
+    table.toc { margin: 0 0 0 3em; padding: 0; border: 0; vertical-align: text-top; }
+    td.toc { font-size: small; font-weight: bold; vertical-align: text-top; }
+
+    span.emph { font-style: italic; }
+    span.strong { font-weight: bold; }
+    span.verb, span.vbare { font-family: "Courier New", Courier, monospace ; }
+
+    span.vemph { font-style: italic; font-family: "Courier New", Courier, monospace ; }
+    span.vstrong { font-weight: bold; font-family: "Courier New", Courier, monospace ; }
+    span.vdeluxe { font-weight: bold; font-style: italic; font-family: "Courier New", Courier, monospace ; }
+
+    ol.text { margin-left: 2em; margin-right: 2em; }
+    ul.text { margin-left: 2em; margin-right: 2em; }
+    li { margin-left: 3em;  }
+
+    pre { margin-left: 3em; color: #333333;  background-color: transparent;
+        font-family: "Courier New", Courier, monospace ; font-size: small ;
+        text-align: left;
+        }
+
+    h3 { color: #333333; font-size: medium ;
+        font-family: helvetica, arial, sans-serif ;
+        background-color: transparent; }
+    h4 { font-size: small; font-family: helvetica, arial, sans-serif ; }
+
+    table.bug { width: 30px ; height: 15px ; }
+    td.bug { color: #ffffff ; background-color: #990000 ;
+        text-align: center ; width: 30px ; height: 15px ;
+         }
+    td.bug A.link2 { color: #ffffff ; font-weight: bold;
+        text-decoration: none;
+        font-family: monaco, charcoal, geneva, "MS Sans Serif", helvetica, sans-serif;
+        font-size: x-small ; background-color: transparent }
+
+    td.header { color: #ffffff; font-size: x-small ;
+        font-family: arial, helvetica, sans-serif; vertical-align: top;
+        background-color: #666666 ; width: 33% ; }
+    td.author { font-weight: bold; margin-left: 4em; font-size: x-small ; }
+    td.author-text { font-size: x-small; }
+    table.full { vertical-align: top ; border-collapse: collapse ;
+        border-style: solid solid solid solid ;
+        border-color: black black black black ;
+        font-size: small ; text-align: center ; }
+    table.headers, table.none { vertical-align: top ; border-collapse: collapse ;
+        border-style: none;
+        font-size: small ; text-align: center ; }
+    table.full th { font-weight: bold ;
+        border-style: solid ;
+        border-color: black black black black ; }
+    table.headers th { font-weight: bold ;
+        border-style: none none solid none;
+        border-color: black black black black ; }
+    table.none th { font-weight: bold ;
+        border-style: none; }
+    table.full td {
+        border-style: solid solid solid solid ;
+        border-color: #333333 #333333 #333333 #333333 ; }
+    table.headers td, table.none td { border-style: none; }
+
+    hr { height: 1px }
+-->
+</style>
+</head>
+<body>
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<table summary="layout" width="66%" border="0" cellpadding="0" cellspacing="0"><tr><td><table summary="layout" width="100%" border="0" cellpadding="2" cellspacing="1">
+<tr><td class="header">draft</td><td class="header">G. Monroe</td></tr>
+<tr><td class="header">&nbsp;</td><td class="header">JanRain</td></tr>
+<tr><td class="header">&nbsp;</td><td class="header">August 9, 2006</td></tr>
+</table></td></tr></table>
+<div align="right"><span class="title"><br />OpenID DTP Version 1.0 Envelopes - Draft 02</span></div>
+
+<h3>Abstract</h3>
+
+<p>
+        OpenID DTP is a protocol for sending, receiving, and relaying an
+        arbitrary signed and encrypted payload between two
+        endpoints. DTP Version 1.0 Part 1: Envelopes defines the
+        envelope formats along with message generation, validation,
+        and error handling.
+      
+</p><a name="toc"></a><br /><hr />
+<h3>Table of Contents</h3>
+<p class="toc">
+<a href="#anchor1">1.</a>&nbsp;
+Requirements Notation<br />
+<a href="#anchor2">2.</a>&nbsp;
+Terminology<br />
+<a href="#anchor3">3.</a>&nbsp;
+XML Namespaces<br />
+<a href="#anchor4">4.</a>&nbsp;
+Messages<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor5">4.1.</a>&nbsp;
+The Inner Envelope<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#inner_recipients">4.1.1.</a>&nbsp;
+The Recipient Elements<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor6">4.1.2.</a>&nbsp;
+The Sender Element<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor7">4.1.3.</a>&nbsp;
+The Data Element<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor8">4.2.</a>&nbsp;
+The Outer Envelope<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor9">4.2.1.</a>&nbsp;
+The Recipient Elements<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor10">4.2.2.</a>&nbsp;
+The Signature Element<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor11">4.2.3.</a>&nbsp;
+The Data Element<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor12">4.3.</a>&nbsp;
+The Relay Envelope<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor13">4.3.1.</a>&nbsp;
+The Recipient Elements<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor14">4.3.2.</a>&nbsp;
+The Relayer Element<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor15">4.3.3.</a>&nbsp;
+The Data Element<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor16">4.3.4.</a>&nbsp;
+The Signature Element<br />
+<a href="#message_validation">5.</a>&nbsp;
+Message Validation<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor17">5.1.</a>&nbsp;
+Outer Envelope Validation<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor18">5.2.</a>&nbsp;
+Relay Envelope Validation<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor19">5.3.</a>&nbsp;
+Inner Envelope Validation<br />
+<a href="#anchor20">6.</a>&nbsp;
+Errors<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#error_codes">6.1.</a>&nbsp;
+Error Codes<br />
+<a href="#anchor21">7.</a>&nbsp;
+Algorithms<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#signatures">7.1.</a>&nbsp;
+Signatures<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#sig_gen">7.1.1.</a>&nbsp;
+Signature Generation<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#sig_ver">7.1.2.</a>&nbsp;
+Signature Verification<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#symmetric_cipher_algorithms">7.2.</a>&nbsp;
+Symmetric Cipher Algorithms<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor22">7.2.1.</a>&nbsp;
+AES 192 CBC<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor23">7.2.2.</a>&nbsp;
+AES 256 CBC<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor24">7.2.3.</a>&nbsp;
+NULL Encryption<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#key_transport">7.3.</a>&nbsp;
+Key Transport<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#anchor25">7.3.1.</a>&nbsp;
+RSA-OAEP<br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#der-sha1">7.4.</a>&nbsp;
+Fingerprints<br />
+<a href="#rfc.references1">8.</a>&nbsp;
+Normative References<br />
+<a href="#message_schema">Appendix&nbsp;A.</a>&nbsp;
+Message Schema<br />
+<a href="#rfc.authors">&#167;</a>&nbsp;
+Author's Address<br />
+</p>
+<br clear="all" />
+
+<a name="anchor1"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.1"></a><h3>1.&nbsp;Requirements Notation</h3>
+
+<p>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+      "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY",
+      and "OPTIONAL" in this document are to be interpreted as
+      described in <a class="info" href="#RFC2119">[RFC2119]<span> (</span><span class="info">Bradner, B., &ldquo;Key words for use in RFCs to Indicate Requirement Levels,&rdquo; .</span><span>)</span></a>.
+</p>
+<a name="anchor2"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.2"></a><h3>2.&nbsp;Terminology</h3>
+
+<p>
+        </p>
+<blockquote class="text"><dl>
+<dt>Identifier:</dt>
+<dd>
+            An Identifier is a URL or <a href="http://www.oasis-open.org/committees/download.php/15376">XRI</a>.
+          
+</dd>
+<dt>User:</dt>
+<dd>
+            Either a sender, recipient, or relayer of messages.
+            Users are represented within this protocol by Identifiers.
+          
+</dd>
+<dt>Payload:</dt>
+<dd>
+            An octet string of any length to be exchanged between Users.
+          
+</dd>
+<dt>Reciever Endpoint:</dt>
+<dd>
+            The software processing a recieved message.
+          
+</dd>
+</dl></blockquote><p>
+      
+</p>
+<a name="anchor3"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.3"></a><h3>3.&nbsp;XML Namespaces</h3>
+
+<p>
+        The default namespace for XML fragments in this document
+        without a namespace prefix is <span class="verb">xmlns="http://www.example.com/2006/06/dtp#"</span>.
+        Other namespace prefixes used include <span class="verb">xmlns:xrd="xri://$xrd*($v*2.0)"</span>.
+      
+</p>
+<a name="anchor4"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4"></a><h3>4.&nbsp;Messages</h3>
+
+<p>
+        A Message consists of a set of nested envelopes. The outermost
+        envelope is always an XML document with a root node
+        of <span class="verb">&lt;OuterEnvelope&gt;</span>. The
+        innermost envelope is always an XML document with a root node
+        of <span class="verb">&lt;InnerEnvelope&gt;</span>.
+      
+</p>
+<p>
+        It is possible to nest the innermost envelope in one or more
+        relay documents before it is encrypted and put in the
+        outermost envelope.  This allows for relaying messages while
+        maintaining the routing metadata, including signatures, with
+        each relay.
+      
+</p>
+<a name="anchor5"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.1"></a><h3>4.1.&nbsp;The Inner Envelope</h3>
+
+<p>
+            An Inner Envelope is an XML document looking something
+            like this:
+          
+</p><pre>
+  &lt;?xml version="1.0"?&gt;
+  &lt;InnerEnvelope xmlns="http://www.example.com/2006/06/dtp#"&gt;
+    &lt;Recipient ...&gt;
+      .
+      .
+      .
+    &lt;Sender ...&gt;
+    &lt;Data ...&gt;
+  &lt;/InnerEnvelope&gt;
+</pre>
+<p>
+            The InnerEnvelope encapsulates the Payload along with
+            information about the User sending the Payload and the one
+            or more Users who should recieve it.
+          
+</p>
+<a name="inner_recipients"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.1.1"></a><h3>4.1.1.&nbsp;The Recipient Elements</h3>
+
+<p>
+              Each Recipient element contains a <span class="verb">&lt;Identifier&gt;</span> element. The
+              Identifier element contains the Identifier of the
+              recipient, e.g.,
+            
+</p><pre>
+  &lt;Recipient&gt;
+    &lt;Identifier&gt;http://joe.example.com/&lt;/Identifier&gt;
+  &lt;/Recipient&gt;
+</pre>
+<a name="anchor6"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.1.2"></a><h3>4.1.2.&nbsp;The Sender Element</h3>
+
+<p>
+              The Sender element has two children: a <span class="verb">&lt;Identifier&gt;</span> element and a
+              <span class="verb">&lt;Fingerprint&gt;</span> element,
+              e.g.,
+            
+</p><pre>
+  &lt;Sender&gt;
+    &lt;Identifier&gt;http://bob.example.com/&lt;/Identifier&gt;
+    &lt;Fingerprint&gt;
+      h9LtI0I0ccY7JxcmEP0eFlGZV6Q=
+    &lt;/Fingerprint&gt;
+  &lt;/Sender&gt;
+</pre>
+<p>
+              The Identifier element contains the Identifier of the
+              User sending the Payload. The contents of the
+              Fingerprint element are described in <a class="info" href="#der-sha1">Section&nbsp;7.4<span> (</span><span class="info">Fingerprints</span><span>)</span></a>.
+            
+</p>
+<a name="anchor7"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.1.3"></a><h3>4.1.3.&nbsp;The Data Element</h3>
+
+<p>
+            The Data element encapsulates the Payload. Since the
+            Payload is an octet string, it is first base64 encoded,
+            and then set as the inner text of the Data element. The
+            <span class="verb">Type</span> attribute of the Data
+            element MUST be set to a URI denoting the type of the
+            Payload.
+          
+</p>
+<p>
+            Note: The Data element may have additional namespaced
+            attributes for application-specific purposes.
+          
+</p>
+<a name="anchor8"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.2"></a><h3>4.2.&nbsp;The Outer Envelope</h3>
+
+<p>
+            An Outer Envelope is an XML document looking something
+            like this:
+          
+</p><pre>
+  &lt;?xml version="1.0"?&gt;
+  &lt;OuterEnvelope xmlns="http://www.example.com/2006/06/dtp#"&gt;
+    &lt;Recipient ...&gt;
+      .
+      .
+      .
+    &lt;Signature ...&gt;
+    &lt;Data ...&gt;
+  &lt;/OuterEnvelope&gt;
+</pre>
+<p>
+            An Outer Envelope contains an encrypted blob along with
+            the information necessary to decrypt it and a signature.
+          
+</p>
+<a name="anchor9"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.2.1"></a><h3>4.2.1.&nbsp;The Recipient Elements</h3>
+
+<p>
+              Each Recipient element contains two subelements: a
+              <span class="verb">&lt;Fingerprint&gt;</span> element,
+              and a <span class="verb">&lt;EncryptedCipherKey&gt;</span>
+              element. The contents of the Fingerprint element are
+              described in <a class="info" href="#der-sha1">Section&nbsp;7.4<span> (</span><span class="info">Fingerprints</span><span>)</span></a>. The
+              EncryptedCipherKey element contains the symmetric cipher
+              key octet string encrypted for the recipient and base64
+              encoded, e.g.,
+            
+</p><pre>
+  &lt;Recipient&gt;
+    &lt;Fingerprint&gt;
+      W3et8wAsnqP2CZjsELkn2nVyx5c=
+    &lt;/Fingerprint&gt;
+    &lt;EncryptedCipherKey
+  EncryptionAlgorithm="http://www.example.com/2006/06/dtp#rsa-oaep"&gt;
+      R2EXPGIuZBNuoGoCM79uJG7nCzgeFq1b3VoZ4SdWcZiOGIjBdBt5N
+      DyQWN3RvfohYna4NsZN6vUzSzL7S8ojCj7Ny1IlS4HYcwkOY7l6eK
+      WM+B/tP40bVmqu8RDoVnziVuJOCO5eM/P1pnA4KTwntoz3SEqiZa8
+      RebIhlRyUScE=
+    &lt;/EncryptedCipherKey&gt;
+  &lt;/Recipient&gt;
+</pre>
+<p>
+              A random octet string must be generated to use as the
+              symmetric cipher key for encryption. The length of the
+              octet string will vary depending on the symmetric cipher
+              algorithm used.
+            
+</p>
+<p>
+            The symmetric cipher key octet string is encrypted with
+            the Recipient's Public Key using one of the algorithms
+            described in <a class="info" href="#key_transport">Section&nbsp;7.3<span> (</span><span class="info">Key Transport</span><span>)</span></a>. The result of
+            encrypting the symmetric cipher key is another octet
+            string that must then be base64 encoded before being
+            inserted in the <span class="verb">&lt;EncryptedCipherKey&gt;</span> element.
+          
+</p>
+<a name="anchor10"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.2.2"></a><h3>4.2.2.&nbsp;The Signature Element</h3>
+
+<p>
+            The Signature element contains a signature of the plain
+            text octet string resulting from decrypting the contents
+            of the Data element. The signature is generated as
+            described in <a class="info" href="#sig_gen">Section&nbsp;7.1.1<span> (</span><span class="info">Signature Generation</span><span>)</span></a>. The result of
+            generating the signature is a new octet string that must
+            be base64 encoded before it is inserted into the <span class="verb">&lt;Signature&gt;</span> element.
+          
+</p>
+<p>
+            The <span class="verb">Algorithm</span> attribute of the
+            Signature element MUST be set to the identifier of the
+            signature algorithm used.
+          
+</p>
+<a name="anchor11"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.2.3"></a><h3>4.2.3.&nbsp;The Data Element</h3>
+
+<p>
+            The Data element encapsulates either an encrypted Inner
+            Envelope XML Document or an encrypted Relay Envelope XML
+            Document. Either way, the XML Document is treated as an
+            octet string.
+          
+</p>
+<p>
+            The XML Document to be encrypted is passed to a symmetric
+            cipher algorithm (see <a class="info" href="#symmetric_cipher_algorithms">Section&nbsp;7.2<span> (</span><span class="info">Symmetric Cipher Algorithms</span><span>)</span></a>) along with the
+            symmetric cipher key. The result of encryption is an octet
+            string of cipher text.
+          
+</p>
+<p>
+            The cipher text is then prefixed with the initial vector
+            used by the symmetric cipher and base64 encoded. The
+            <span class="verb">CipherAlgorithm</span> attribute of
+            the Data element MUST be set to the identifier of the
+            cipher algorithm used.
+          
+</p>
+<p>
+	    The <span class="verb">Contents</span> attribute of the
+            Data element is a string, and MUST be set to a either
+            <span class="verb">inner</span> or <span class="verb">relay</span>, denoting the type of its
+            contents.
+          
+</p>
+<a name="anchor12"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.3"></a><h3>4.3.&nbsp;The Relay Envelope</h3>
+
+<p>
+            A Relay Envelope is an XML document looking something
+            like this:
+          
+</p><pre>
+  &lt;?xml version="1.0"?&gt;
+  &lt;RelayEnvelope xmlns="http://www.example.com/2006/06/dtp#"&gt;
+    &lt;Recipient ...&gt;
+      .
+      .
+      .
+    &lt;Relayer ...&gt;
+    &lt;Signature ...&gt;
+    &lt;Data ...&gt;
+  &lt;/RelayEnvelope&gt;
+</pre>
+<p>
+            The Relay Envelope encapsulates either an Inner Envelope
+            or another Relay Envelope. The nesting of Relay Envelopes
+            represents the number of times the Inner Envelope has been
+            relayed.
+          
+</p>
+<a name="anchor13"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.3.1"></a><h3>4.3.1.&nbsp;The Recipient Elements</h3>
+
+<p>
+            The format of the Recipient elements in a Relay Envelope
+            are identical to those of the Inner Envelope described in
+            <a class="info" href="#inner_recipients">Section&nbsp;4.1.1<span> (</span><span class="info">The Recipient Elements</span><span>)</span></a>. The Recipients,
+            however, will more than likely not be the same.
+          
+</p>
+<a name="anchor14"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.3.2"></a><h3>4.3.2.&nbsp;The Relayer Element</h3>
+
+<p>
+              The Relayer element has two children: a <span class="verb">&lt;Identifier&gt;</span> element and a
+              <span class="verb">&lt;Fingerprint&gt;</span> element,
+              e.g.,
+            
+</p><pre>
+  &lt;Relayer&gt;
+    &lt;Identifier&gt;http://joe.example.com/&lt;/Identifier&gt;
+    &lt;Fingerprint&gt;
+      W3et8wAsnqP2CZjsELkn2nVyx5c=
+    &lt;/Fingerprint&gt;
+  &lt;/Relayer&gt;
+</pre>
+<p>
+              The Identifier element contains the Identifier of the
+              User relaying the Inner Envelope. The contents of the
+              Fingerprint element are described in
+              <a class="info" href="#der-sha1">Section&nbsp;7.4<span> (</span><span class="info">Fingerprints</span><span>)</span></a>.
+            
+</p>
+<a name="anchor15"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.3.3"></a><h3>4.3.3.&nbsp;The Data Element</h3>
+
+<p>
+            The Data element encapsulates either Inner Envelope XML
+            Document or another Relay Envelope XML Document. Either
+            way, the XML Document is treated as an octet string. It is
+            first base64 encoded, and then set as the inner text of
+            the Data element. The <span class="verb">Contents</span>
+            attribute of the Data element is a string, and MUST be set
+            to a either <span class="verb">inner</span> or <span class="verb">relay</span>, denoting the type of its
+            contents.
+          
+</p>
+<a name="anchor16"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.4.3.4"></a><h3>4.3.4.&nbsp;The Signature Element</h3>
+
+<p>
+            The Signature element contains a signature of the plain
+            text octet string resulting from decoding the base64
+            encoded contents of the Data element. The signature is
+            generated as described in <a class="info" href="#sig_gen">Section&nbsp;7.1.1<span> (</span><span class="info">Signature Generation</span><span>)</span></a>. The
+            result of generating the signature is a new octet string
+            that must be base64 encoded before it is inserted into the
+            <span class="verb">&lt;Signature&gt;</span> element.
+          
+</p>
+<p>
+            The contents of the Signature element along with its
+            attributes MAY have been extracted from the Signature
+            element of the Outer Envelope XML Document that originally
+            wrapped the XML Document enclosed by the Data element of
+            this Relay Envelope. In other words, the signature may
+            have been generated by someone other than the current
+            Relayer.
+          
+</p>
+<a name="message_validation"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.5"></a><h3>5.&nbsp;Message Validation</h3>
+
+<p>
+        Message validation always begins with an Outer
+        Envelope. From there each message in the chain of nested
+        envelopes must be validated, completing with validation of
+        the Inner Envelope.
+      
+</p>
+<p>
+        At any point during processing, if a document expected to be
+        well-formed XML does no parse as such, this corresponds to
+        the <span class="verb">MALFORMED_XML</span> error code
+        listed in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+      
+</p>
+<p>
+        Implementions SHOULD validate each envelope against the XML
+        Schema listed in <a class="info" href="#message_schema">Appendix&nbsp;A<span> (</span><span class="info">Message Schema</span><span>)</span></a> before any
+        further processing. During processing, if a message does not
+        validate against the XML Schema, does not contain elements
+        as expected, or contains data that is not properly encoded,
+        this corresponds to the <span class="verb">XML_SCHEMA_MISMATCH</span> error code listed
+        in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+      
+</p>
+<a name="anchor17"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.5.1"></a><h3>5.1.&nbsp;Outer Envelope Validation</h3>
+
+<p>
+          The Reciever Endpoint MUST know about at least one of the
+          Recipients listed unless the CipherAlgorithm attribute of
+          the Data element is set to <a href="http://www.example.com/2006/06/dtp#null">http://www.example.com/2006/06/dtp#null</a>. If
+          the Reciever Endpoint does not have a the corresponding
+          RSA Private Key associated with any of the listed
+          fingerprints, this corresponds to the <span class="verb">NO_KNOWN_RECIPIENTS</span> error code listed
+          in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+        
+</p>
+<p>
+          For each Recipient element containing a Fingerprint for
+          which the Reciever Endpoint has the corresponding private
+          key, the encrypted symmetric cipher key should be
+          decrypted using the private key, and the algorithm
+          identified by the EncryptionAlgorithm attribute of the
+          EncryptedCipherKey element. If the encryption algorithm
+          identified by the EncryptionAlgorithm attribute is not
+          known, this corresponds to the <span class="verb">UNKNOWN_ALGORITHM</span> error code
+          listed in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+        
+</p>
+<p>
+          The symmetric cipher key octet string resulting from
+          decryption MUST be the same for all known recipients.  If
+          decryption results in more than one unique octet string,
+          this corresponds to the <span class="verb">CIPHER_KEY_MISMATCH</span> error code listed
+          in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+        
+</p>
+<p>
+          Once the symmetric cipher key has been decrypted, it is
+          used to decrypt the encapsulated XML Document. The
+          ciphertext is extracted by decoding the base64 encoded
+          contents of the Data element. The ciphertext is then
+          decrypted according to the algorithm specified in the
+          CipherAlgorithm attribute of the Data element using the
+          symmetric cipher key resulting in an XML Document. If the
+          symmetric cipher algorithm identified by the
+          CipherAlgorithm attribute is not known, this corresponds
+          to the <span class="verb">UNKNOWN_ALGORITHM</span>
+          error code listed in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>. The
+          resulting XML Document can be identified as either a Relay
+          or Inner Envelope by looking at the Contents attribute of
+          the Outer envelope's Data element.
+        
+</p>
+<p>
+          The signature octet string is extracted by decoding the
+          base64 encoded contents of the Signature element. The Algorithm
+          attribute of the Signature element indicates the algorithm
+          used to generate the signature. If the signature algorithm
+          identified by the Algorithm attribute is not known, this
+          corresponds to the <span class="verb">UNKNOWN_ALGORITHM</span> error code
+          listed in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+        
+</p>
+<p>
+          To verify the signature over the decrypted XML Document,
+          the document must first be parsed to extract the
+          Identifier and Fingerprint from the Sender/Relayer
+          element. If no public key is found for the (Identifier,
+          Fingerprint) pair, this corresponds to the <span class="verb">UNKNOWN_OUTER_SIGNER</span> error code
+          listed in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+        
+</p>
+<p>
+          Using the public key associated with the (Identifier,
+          Fingerprint) pair, the signature octet string, and the
+          unmodified plain text resulting from decrypting the
+          contents of the Data element, signature verification must
+          be performed as described in <a class="info" href="#sig_ver">Section&nbsp;7.1.2<span> (</span><span class="info">Signature Verification</span><span>)</span></a>.  If
+          signature verification fails, this corresponds to the
+          <span class="verb">BAD_OUTER_SIGNATURE</span> error code
+          listed in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+        
+</p>
+<a name="anchor18"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.5.2"></a><h3>5.2.&nbsp;Relay Envelope Validation</h3>
+
+<p>
+          The base64 encoded contents of the Data element can be
+          decoded to produce the relayed XML Document. The resulting
+          XML Document can be identified as either a Relay or Inner
+          Envelope by looking at the Contents attribute of this
+          envelope's Data element.
+        
+</p>
+<p>
+          The signature octet string is extracted by decoding the
+          base64 encoded contents of the Signature element. The
+          Algorithm attribute of the Signature element indicates the
+          algorithm used to generate the signature. If the signature
+          algorithm identified by the Algorithm attribute is not
+          known, this corresponds to the <span class="verb">UNKNOWN_ALGORITHM</span> error code
+          listed in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+        
+</p>
+<p>
+          To verify the signature over the relayed XML Document, the
+          document must first be parsed to extract the Identifier
+          and Fingerprint from the Sender/Relayer element. If no
+          public key is found for the (Identifier, Fingerprint)
+          pair, this corresponds to the <span class="verb">UNKNOWN_RELAY_SIGNER</span> error code
+          listed in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+        
+</p>
+<p>
+          Using the public key associated with the (Identifier,
+          Fingerprint) pair, the signature octet string, and the
+          unmodified plain text resulting from decoding the
+          contents of the Data element, signature verification must
+          be performed as described in <a class="info" href="#sig_ver">Section&nbsp;7.1.2<span> (</span><span class="info">Signature Verification</span><span>)</span></a>.  If
+          signature verification fails, this corresponds to th
+          <span class="verb">BAD_RELAY_SIGNATURE</span> error code
+          listed in <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+        
+</p>
+<a name="anchor19"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.5.3"></a><h3>5.3.&nbsp;Inner Envelope Validation</h3>
+
+<p>
+          The base64 encoded contents of the Data element can be
+          decoded to produce the Payload. If the Payload type
+          identified by the Type attribute is not known, this
+          corresponds to the <span class="verb">UNKNOWN_PAYLOAD</span> error code listed in
+          <a class="info" href="#error_codes">Section&nbsp;6.1<span> (</span><span class="info">Error Codes</span><span>)</span></a>.
+        
+</p>
+<a name="anchor20"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.6"></a><h3>6.&nbsp;Errors</h3>
+
+<p>
+        In the event that validation of a message fails, in some
+        instances, it MAY be possible to report the issue to the
+        Sender/Relayer. For this we define a simple XML document and a
+        set of error codes corresponding to the way in which
+        validation failed.
+      
+</p>
+<p>
+          An Error document has a root element of <span class="verb">Error</span>, e.g.,
+        
+</p><pre>
+  &lt;?xml version="1.0"?&gt;
+  &lt;Error Code="MALFORMED_XML"
+            xmlns="http://www.example.com/2006/06/dtp#"&gt;
+    h9LtI0I0ccY7JxcmEP0eFlGZV6Q=
+  &lt;/Error&gt;
+</pre>
+<p>
+          The Error element has an attribute, <span class="verb">Code</span>, indicating the error that
+          occured. The Error element contains a base64 encoded <a class="info" href="#SHA-1">[SHA-1]<span> (</span><span class="info">Eastlake, D. and P. Jones, &ldquo;US Secure Hash Algorithm 1 (SHA1),&rdquo; .</span><span>)</span></a> digest of the bytes that validation was
+          attempted on.
+        
+</p>
+<p>
+        The Error XML document should be wrapped in an Outer envelope
+        and signed with the private key associated with the Reciever
+        Endpoint. The NULL encryption type should be used, and no
+        Recipient elements are necessary.
+      
+</p>
+<a name="error_codes"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.6.1"></a><h3>6.1.&nbsp;Error Codes</h3>
+
+<p>
+          </p>
+<blockquote class="text"><dl>
+<dt>MALFORMED_XML</dt>
+<dd>
+              At any point, a document expected to be well-formed XML
+              is not.
+            
+</dd>
+<dt>XML_SCHEMA_MISMATCH</dt>
+<dd>
+              At any point, a document expected to be well-formed XML
+              does not match the XML Schema listed in <a class="info" href="#message_schema">Appendix&nbsp;A<span> (</span><span class="info">Message Schema</span><span>)</span></a>.
+            
+</dd>
+<dt>NO_KNOWN_RECIPIENTS</dt>
+<dd>
+              The Reciever Endpoint does not have the corresponding
+              RSA Private Key for any of the fingerprints listed in
+              the Outer Envelope's Recipient elements.
+            
+</dd>
+<dt>CIPHER_KEY_MISMATCH</dt>
+<dd>
+              The result of decrypting the cipher key for each known
+              recipient results in more than one unique octet string.
+            
+</dd>
+<dt>UNKNOWN_OUTER_SIGNER</dt>
+<dd>
+              The Reciever Endpoint is unable to acquire the RSA
+              Public Key identified by the (Identifier, Fingerprint)
+              pair in the Sender/Relayer element of the envelope
+              enclosed in the OuterEnvelope.
+            
+</dd>
+<dt>UNKNOWN_RELAY_SIGNER</dt>
+<dd>
+              The Reciever Endpoint is unable to acquire the RSA
+              Public Key identified by the (Identifier, Fingerprint)
+              pair in the Sender/Relayer element of an envelope
+              enclosed in a RelayEnvelope.
+            
+</dd>
+<dt>BAD_OUTER_SIGNATURE</dt>
+<dd>
+              The result of running the signature verification
+              algorithm on the enclosed envelope does not match the
+              signature in the OuterEnvelope.
+            
+</dd>
+<dt>BAD_RELAY_SIGNATURE</dt>
+<dd>
+              The result of running the signature verification
+              algorithm on an enclosed envelope does not match the
+              signature in a RelayEnvelope.
+            
+</dd>
+<dt>UNKNOWN_ALGORITHM</dt>
+<dd>
+              An algorithm specified on an EncryptedCipherKey
+              element, a Data element, or a Signature element is not
+              supported by the Reciever Endpoint.
+            
+</dd>
+<dt>UNKNOWN_PAYLOAD</dt>
+<dd>
+              The Type attribute of the Data element of the Inner
+              envelope describing the Payload is not recognized.
+            
+</dd>
+</dl></blockquote><p>
+        
+</p>
+<a name="anchor21"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7"></a><h3>7.&nbsp;Algorithms</h3>
+
+<p>
+        This section describes the cryptographic algorithms used to
+        digest, sign, and encrypt various portions of data used to
+        construct messages.
+      
+</p>
+<a name="signatures"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7.1"></a><h3>7.1.&nbsp;Signatures</h3>
+
+<p>
+          All implementations MUST support the RSA-SHA1 signature
+          algorithms identified by <a href="http://www.example.com/2006/06/dtp#rsa-sha1">http://www.example.com/2006/06/dtp#rsa-sha1</a>. The
+          RSA-SHA1 signature algorithms are described in RFC 2473 <a class="info" href="#PKCS1">[PKCS1]<span> (</span><span class="info">Kaliski, B. and J. Staddon, &ldquo;PKCS #1: RSA Cryptography Specifications Version 2.0,&rdquo; .</span><span>)</span></a>, section 8.1.
+        
+</p>
+<a name="sig_gen"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7.1.1"></a><h3>7.1.1.&nbsp;Signature Generation</h3>
+
+<p>
+            Section 8.1.1 of RFC 2437 <a class="info" href="#PKCS1">[PKCS1]<span> (</span><span class="info">Kaliski, B. and J. Staddon, &ldquo;PKCS #1: RSA Cryptography Specifications Version 2.0,&rdquo; .</span><span>)</span></a>
+            describes a function <span class="verb">RSASSA-PKCS1-V1_5-SIGN</span> with two
+            inputs, <span class="verb">K</span> and <span class="verb">M</span>. <span class="verb">K</span> is
+            the Sender's or Relayer's RSA Private Key and <span class="verb">M</span> is the XML Document, treated as an
+            octet string to be signed. The output of <span class="verb">RSASSA-PKCS1-V1_5-SIGN</span> is an octet
+            string.
+          
+</p>
+<a name="sig_ver"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7.1.2"></a><h3>7.1.2.&nbsp;Signature Verification</h3>
+
+<p>
+            Section 8.1.2 of RFC 2473 <a class="info" href="#PKCS1">[PKCS1]<span> (</span><span class="info">Kaliski, B. and J. Staddon, &ldquo;PKCS #1: RSA Cryptography Specifications Version 2.0,&rdquo; .</span><span>)</span></a> describes
+            a function <span class="verb">RSASSA-PKCS1-V1_5-VERIFY</span> with three
+            inputs, <span class="verb">(n, e)</span>, <span class="verb">M</span>, and <span class="verb">S</span>. The pair, <span class="verb">(n,
+            e)</span>, represents the Sender's or Relayer's RSA
+            Public Key, <span class="verb">M</span> is the octet
+            string representing the signed envelope that was signed by
+            the Sender/Relayer, and <span class="verb">S</span> is
+            the signature to be verified.
+          
+</p>
+<a name="symmetric_cipher_algorithms"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7.2"></a><h3>7.2.&nbsp;Symmetric Cipher Algorithms</h3>
+
+<p>
+          These ciphers are used with a symmetric cipher key to
+          encrypt either an Inner Envelope or Relay Envelope XML
+          Document before being included in the Data element of an
+          Outer Envelope. Each of these algorithms is identified by a
+          URI. All implementations MUST support the following ciphers.
+        
+</p>
+<a name="anchor22"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7.2.1"></a><h3>7.2.1.&nbsp;AES 192 CBC</h3>
+
+<p>
+            </p>
+<blockquote class="text"><dl>
+<dt>Identifier</dt>
+<dd>
+                <a href="http://www.example.com/2006/06/dtp#aes192-cbc">http://www.example.com/2006/06/dtp#aes192-cbc</a>
+              
+</dd>
+</dl></blockquote><p>
+
+            <a href="http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf">AES</a>
+            is used in the Cipher Block Chaining (CBC) mode with a 192
+            bit key. This algorithm uses a 128 bit initialization
+            vector.
+          
+</p>
+<a name="anchor23"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7.2.2"></a><h3>7.2.2.&nbsp;AES 256 CBC</h3>
+
+<p>
+            </p>
+<blockquote class="text"><dl>
+<dt>Identifier</dt>
+<dd>
+                <a href="http://www.example.com/2006/06/dtp#aes256-cbc">http://www.example.com/2006/06/dtp#aes256-cbc</a>
+              
+</dd>
+</dl></blockquote><p>
+            
+            <a href="http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf">AES</a>
+            is used in the Cipher Block Chaining (CBC) mode with a 256
+            bit key. This algorithm uses a 128 bit initialization
+            vector.
+          
+</p>
+<a name="anchor24"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7.2.3"></a><h3>7.2.3.&nbsp;NULL Encryption</h3>
+
+<p>
+            </p>
+<blockquote class="text"><dl>
+<dt>Identifier</dt>
+<dd>
+                <a href="http://www.example.com/2006/06/dtp#null">http://www.example.com/2006/06/dtp#null</a>
+              
+</dd>
+</dl></blockquote><p>
+            
+            If the CipherAlgorithm attribute of the Data element of the Outer
+            envelope is set to this identifier, the data is not
+            encrypted. All that is needed to retrieve the encapsulated
+            envelope is to decode the base64 encoded inner text of the
+            Data element. No Recipient elements are needed in the
+            outer envelope when this algorithm is specified.
+          
+</p>
+<a name="key_transport"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7.3"></a><h3>7.3.&nbsp;Key Transport</h3>
+
+<p>
+          The symmetric cipher key used during <a class="info" href="#symmetric_cipher_algorithms">symmetric
+          encryption<span> (</span><span class="info">Symmetric Cipher Algorithms</span><span>)</span></a> must be encrypted for each recipient. To
+          do this, a key transport algorithm using the recipients
+          public key must be used.
+        
+</p>
+<a name="anchor25"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7.3.1"></a><h3>7.3.1.&nbsp;RSA-OAEP</h3>
+
+<p>
+            </p>
+<blockquote class="text"><dl>
+<dt>Identifier</dt>
+<dd>
+                <a href="http://www.example.com/2006/06/dtp#rsa-oaep">http://www.example.com/2006/06/dtp#rsa-oaep</a>
+              
+</dd>
+</dl></blockquote><p>
+
+            The <span class="verb">RSAES-OAEP</span> algorithm,
+            specified in section 7.1. of RFC 2437 <a class="info" href="#PKCS1">[PKCS1]<span> (</span><span class="info">Kaliski, B. and J. Staddon, &ldquo;PKCS #1: RSA Cryptography Specifications Version 2.0,&rdquo; .</span><span>)</span></a>, is used to encrypt and
+            decrypt the symmetric cipher key for each Recipient.
+          
+</p>
+<p>
+            The value input to the key transport function SHOULD be
+            calculated using <a class="info" href="#SHA-1">[SHA-1]<span> (</span><span class="info">Eastlake, D. and P. Jones, &ldquo;US Secure Hash Algorithm 1 (SHA1),&rdquo; .</span><span>)</span></a> and the empty
+            octet string, and <span class="verb">MGF1</span> (with
+            SHA1) SHOULD be used for mask generation during <span class="verb">RSAES-OAEP-ENCRYPT</span> and <span class="verb">RSAES-OAEP-DECRYPT</span>.
+          
+</p>
+<a name="der-sha1"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.7.4"></a><h3>7.4.&nbsp;Fingerprints</h3>
+
+<p>
+          A Fingerprint is a digest of a DER-encoded RSA Public
+          Key. These fingerprints can be used in combination with an
+          Identifier to aid in caching of Public Keys. The <span class="verb">&lt;Fingerprint&gt;</span> element contains a
+          base64 encoded digest.
+        
+</p>
+<p>
+          There is only one type of signature defined.  The
+          fingerprint is a <a class="info" href="#SHA-1">[SHA-1]<span> (</span><span class="info">Eastlake, D. and P. Jones, &ldquo;US Secure Hash Algorithm 1 (SHA1),&rdquo; .</span><span>)</span></a> digest of the
+          DER-encoded public key and is identified by the URI, <span class="verb">http://www.example.com/2006/06/dtp#der-sha1</span>.
+        
+</p>
+<a name="rfc.references1"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<h3>8.&nbsp;Normative References</h3>
+<table width="99%" border="0">
+<tr><td class="author-text" valign="top"><a name="PKCS1">[PKCS1]</a></td>
+<td class="author-text">Kaliski, B. and J. Staddon, &ldquo;<a href="http://www.ietf.org/rfc/rfc2437.txt">PKCS #1: RSA Cryptography Specifications Version 2.0</a>,&rdquo; RFC&nbsp;2437.</td></tr>
+<tr><td class="author-text" valign="top"><a name="RFC2119">[RFC2119]</a></td>
+<td class="author-text">Bradner, B., &ldquo;Key words for use in RFCs to Indicate Requirement Levels.&rdquo;</td></tr>
+<tr><td class="author-text" valign="top"><a name="SHA-1">[SHA-1]</a></td>
+<td class="author-text">Eastlake, D. and P. Jones, &ldquo;<a href="http://www.ietf.org/rfc/rfc3174.txt">US Secure Hash Algorithm 1 (SHA1)</a>,&rdquo; RFC&nbsp;3174.</td></tr>
+</table>
+
+<a name="message_schema"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<a name="rfc.section.A"></a><h3>Appendix A.&nbsp;Message Schema</h3>
+<pre>
+
+&lt;?xml version='1.0' encoding='UTF-8'?&gt;
+&lt;schema targetNamespace="http://www.example.com/2006/06/dtp#"
+        xmlns="http://www.w3.org/2001/XMLSchema"
+        xmlns:dtp="http://www.example.com/2006/06/dtp#"
+        blockDefault="#all"
+        elementFormDefault="qualified"
+        version="1.0"
+        xml:lang="EN" &gt;
+
+  &lt;complexType name="SignatureType"&gt;
+    &lt;simpleContent&gt;
+      &lt;extension base="base64Binary"&gt;
+        &lt;attribute name="Algorithm" type="anyURI" use="required"/&gt;
+      &lt;/extension&gt;
+    &lt;/simpleContent&gt;
+  &lt;/complexType&gt;
+
+  &lt;complexType name="EncryptedCipherKeyType"&gt;
+    &lt;simpleContent&gt;
+      &lt;extension base="base64Binary"&gt;
+        &lt;attribute name="EncryptionAlgorithm" type="anyURI"
+                   use="required"/&gt;
+      &lt;/extension&gt;
+    &lt;/simpleContent&gt;
+  &lt;/complexType&gt;
+
+  &lt;complexType name="SimpleAddressType"&gt;
+    &lt;sequence&gt;
+      &lt;element name="Identifier" type="anyURI"/&gt;
+    &lt;/sequence&gt;
+  &lt;/complexType&gt;
+
+  &lt;simpleType name="FingerprintType"&gt;
+    &lt;restriction base="base64Binary"/&gt;
+  &lt;/simpleType&gt;
+
+  &lt;complexType name="FingerprintedAddressType"&gt;
+    &lt;complexContent&gt;
+      &lt;extension base="dtp:SimpleAddressType"&gt;
+        &lt;sequence&gt;
+          &lt;element name="Fingerprint" type="dtp:FingerprintType"/&gt;
+        &lt;/sequence&gt;
+      &lt;/extension&gt;
+    &lt;/complexContent&gt;
+  &lt;/complexType&gt;
+
+  &lt;simpleType name="DataType"&gt;
+    &lt;restriction base="base64Binary"/&gt;
+  &lt;/simpleType&gt;
+
+  &lt;simpleType name="ContentsAttrType"&gt;
+    &lt;restriction base="string"&gt;
+      &lt;enumeration value="inner"/&gt;
+      &lt;enumeration value="relay"/&gt;
+    &lt;/restriction&gt;
+  &lt;/simpleType&gt;
+
+  &lt;complexType name="RelayDataType"&gt;
+    &lt;simpleContent&gt;
+      &lt;extension base="dtp:DataType"&gt;
+        &lt;attribute name="Contents" type="dtp:ContentsAttrType"
+                   use="required"/&gt;
+      &lt;/extension&gt;
+    &lt;/simpleContent&gt;
+  &lt;/complexType&gt;
+
+  &lt;complexType name="AnnotatedDataType"&gt;
+    &lt;simpleContent&gt;
+      &lt;extension base="dtp:DataType"&gt;
+        &lt;attribute name="Type" type="anyURI" use="required"/&gt;
+        &lt;anyAttribute namespace="##other" processContents="lax"/&gt;
+      &lt;/extension&gt;
+    &lt;/simpleContent&gt;
+  &lt;/complexType&gt;
+
+  &lt;attributeGroup name="EncryptedDataAttrGroup"&gt;
+    &lt;attribute name="Contents" type="dtp:ContentsType"
+               use="required"/&gt;
+    &lt;attribute name="CipherAlgorithm" type="anyURI"
+               use="required"/&gt;
+  &lt;/attributeGroup&gt;
+
+  &lt;complexType name="EncryptedDataType"&gt;
+    &lt;simpleContent&gt;
+      &lt;extension base="dtp:DataType"&gt;
+        &lt;attributeGroup ref="dtp:EncryptedDataAttrGroup"/&gt;
+      &lt;/extension&gt;
+    &lt;/simpleContent&gt;
+  &lt;/complexType&gt;
+
+  &lt;element name="InnerEnvelope"&gt;
+    &lt;complexType&gt;
+      &lt;sequence&gt;
+        &lt;element name="Recipient" type="dtp:SimpleAddressType"
+                 maxOccurs="unbounded"/&gt;
+        &lt;element name="Sender" type="dtp:FingerprintedAddressType"/&gt;
+        &lt;element name="Data" type="dtp:AnnotatedDataType" /&gt;
+      &lt;/sequence&gt;
+    &lt;/complexType&gt;
+  &lt;/element&gt;
+
+  &lt;element name="RelayEnvelope"&gt;
+    &lt;complexType&gt;
+      &lt;sequence&gt;
+        &lt;element name="Recipient"
+                 type="dtp:SimpleAddressType"
+                 maxOccurs="unbounded"/&gt;
+        &lt;element name="Relayer" type="dtp:FingerprintedAddressType"/&gt;
+        &lt;element name="Signature" type="dtp:SignatureType"/&gt;
+        &lt;element name="Data" type="dtp:RelayDataType"/&gt;
+      &lt;/sequence&gt;
+    &lt;/complexType&gt;
+  &lt;/element&gt;
+
+  &lt;element name="OuterEnvelope"&gt;
+    &lt;complexType&gt;
+      &lt;sequence&gt;
+        &lt;element name="Recipient" minOccurs="0"
+                 maxOccurs="unbounded"&gt;
+          &lt;complexType&gt;
+            &lt;sequence&gt;
+              &lt;element name="Fingerprint"
+                       type="dtp:FingerprintType"/&gt;
+              &lt;element name="EncryptedCipherKey"
+                       type="dtp:EncryptedCipherKeyType" /&gt;
+            &lt;/sequence&gt;
+          &lt;/complexType&gt;
+        &lt;/element&gt;
+        &lt;element name="Signature" type="dtp:SignatureType"/&gt;
+        &lt;element name="Data" type="dtp:EncryptedDataType"/&gt;
+      &lt;/sequence&gt;
+    &lt;/complexType&gt;
+  &lt;/element&gt;
+
+  &lt;simpleType name="ErrorCodeType"&gt;
+    &lt;restriction base="string"&gt;
+      &lt;enumeration value="CIPHER_KEY_MISMATCH"/&gt;
+      &lt;enumeration value="NO_KNOWN_RECIPIENTS"/&gt;
+      &lt;enumeration value="UNKNOWN_OUTER_SIGNER"/&gt;
+      &lt;enumeration value="UNKNOWN_RELAY_SIGNER"/&gt;
+      &lt;enumeration value="BAD_OUTER_SIGNATURE"/&gt;
+      &lt;enumeration value="BAD_RELAY_SIGNATURE"/&gt;
+      &lt;enumeration value="MALFORMED_XML"/&gt;
+      &lt;enumeration value="XML_SCHEMA_MISMATCH"/&gt;
+      &lt;enumeration value="UNKNOWN_ALGORITHM"/&gt;
+      &lt;enumeration value="UNKNOWN_PAYLOAD"/&gt;
+    &lt;/restriction&gt;
+  &lt;/simpleType&gt;
+
+  &lt;element name="Error"&gt;
+    &lt;complexType&gt;
+      &lt;simpleContent&gt;
+        &lt;extension base="base64Binary"&gt;
+          &lt;attribute name="Code" type="dtp:ErroCodeType"
+                     use="required"/&gt;
+        &lt;/extension&gt;
+      &lt;/simpleContent&gt;
+    &lt;/complexType&gt;
+  &lt;/element&gt;
+
+&lt;/schema&gt;
+
+</pre>
+<a name="rfc.authors"></a><br /><hr />
+<table summary="layout" cellpadding="0" cellspacing="2" class="bug" align="right"><tr><td class="bug"><a href="#toc" class="link2">&nbsp;TOC&nbsp;</a></td></tr></table>
+<h3>Author's Address</h3>
+<table width="99%" border="0" cellpadding="0" cellspacing="0">
+<tr><td class="author-text">&nbsp;</td>
+<td class="author-text">Grant Monroe</td></tr>
+<tr><td class="author-text">&nbsp;</td>
+<td class="author-text">JanRain, Inc.</td></tr>
+<tr><td class="author-text">&nbsp;</td>
+<td class="author-text">5331 SW Macadam Avenue</td></tr>
+<tr><td class="author-text">&nbsp;</td>
+<td class="author-text">Suite #375</td></tr>
+<tr><td class="author-text">&nbsp;</td>
+<td class="author-text">Portland, OR  97239</td></tr>
+<tr><td class="author-text">&nbsp;</td>
+<td class="author-text">USA</td></tr>
+<tr><td class="author" align="right">Email:&nbsp;</td>
+<td class="author-text"><a href="mailto:grant@janrain.com">grant@janrain.com</a></td></tr>
+</table>
+</body></html>
