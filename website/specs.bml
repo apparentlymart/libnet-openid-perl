@@ -12,7 +12,16 @@ body<=
 
 <h2>Future Drafts</h2>
 <ul>
-<li><a href='/specs/openid-authentication-2_0-06.html'>OpenID Authentication 2.0 - Draft 6</a> (<a href='/specs/openid-authentication-2_0-06.txt'>txt</a>)</li>
+<li><a href='/specs/openid-authentication-2_0-08.html'>OpenID Authentication 2.0 - Draft 8</a> (<a href='/specs/openid-authentication-2_0-08.txt'>txt</a>)</li>
+<li>
+
+<li>OpenID Data Transport Protocol - Draft 2</li>
+<ul>
+<li><a href='/specs/openid-dtp-envelopes-1_0-02.html'>Envelopes</a> (<a href='/specs/openid-dtp-envelopes-1_0-02.txt'>txt</a>)</li>
+<li><a href='/specs/openid-dtp-adjuncts-1_0-02.html'>Adjuncts</a> (<a href='/specs/openid-dtp-adjuncts-1_0-02.txt'>txt</a>)</li>
+</ul>
+</li>
+
 </ul>
 
 <h2>Past Specs</h2>
