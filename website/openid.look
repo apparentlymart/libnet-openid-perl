@@ -26,7 +26,8 @@ _code?>
 
 <div class='linkbar'>
 <?link /|About link?>
-<?link /specs.bml|Specs link?>
+<?link /specs.bml|Specifications link?>
+<?link /presentations.bml|Presentations link?>
 &mdash;
 <?olink http://www.lifewiki.net/openid/OpenIDStatus|Status olink?>
 <?olink http://www.lifewiki.net/openid/OpenIDLibraries|Libraries olink?>
