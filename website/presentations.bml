@@ -1,0 +1,22 @@
+<?page
+wintitle<=OpenID Presentations
+head<=
+<=head
+
+body<=
+<h2>2006</h2>
+<ul>
+<li><a href='/pres/2006_Liberty_IdentityOpenSpace_Vancouver.pdf'>Liberty Alliance Identity Open Space</a></li>
+<li><a href='/pres/2006_OSCON_Wikimania_Hacking_Days.pdf'>WikiMania Hacking Days</a></li>
+<li><a href='/pres/2006_OSCON_Practical_OpenID.pdf'>O'Reilly OSCON</a></li>
+<li><a href='ftp://ftp.lukasrosenstock.net/lrdd/pres/Identity2YadisOpenID_Webmontag140806.zip'>Web Montag</a> <font size='1'>(in German)</font></li></ul>
+<li><a href='/pres/2006_ApacheCon_Asia/takahashi.xul'>ApacheCon Asia</a> <font size='1'>(only works in FireFox)</font></li></ul>
+
+<h2>2005</h2>
+<ul>
+<li><a href='/pres/2005_InternetIdentityWorkshop_Berkeley.pdf'>Internet Identity Workshop in Berkeley</a></li>
+<li><a href='/pres/2005_iiw_developer_lunch.pdf'>Internet Identity Workshop Developer Lunch</a></li>
+</ul>
+
+<=body
+page?>
