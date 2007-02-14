@@ -385,6 +385,10 @@ sub verified_identity {
     my $a_ident  = $self->args("openid.identity")     or return $self->_fail("no_identity");
 
     my $sig64    = $self->args("openid.sig")          or return $self->_fail("no_sig");
+    
+    # fix sig if the OpenID auth server failed to properly escape pluses (+) in the sig
+    $sig64 =~ s/ /+/g;
+
     my $returnto = $self->args("openid.return_to")    or return $self->_fail("no_return_to");
     my $signed   = $self->args("openid.signed");
 
