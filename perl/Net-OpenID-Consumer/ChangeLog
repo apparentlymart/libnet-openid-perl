@@ -1,3 +1,7 @@
+	* work-around bug in some openid servers that don't escape "+".
+	  so treat a space as a +.  (from Thomas Sibley
+	  <trs@bestpractical.com>)
+
         * go into dumb mode earlier if it's detected that our cache object
 	  isn't working
 
