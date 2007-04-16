@@ -1,3 +1,4 @@
+0.13:
 	* work-around bug in some openid servers that don't escape "+".
 	  so treat a space as a +.  (from Thomas Sibley
 	  <trs@bestpractical.com>)
