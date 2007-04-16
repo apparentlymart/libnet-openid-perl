@@ -9,7 +9,7 @@ use URI::Fetch 0.02;
 package Net::OpenID::Consumer;
 
 use vars qw($VERSION);
-$VERSION = "0.12";
+$VERSION = "0.13";
 
 use fields (
             'cache',           # the Cache object sent to URI::Fetch
