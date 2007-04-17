@@ -1,3 +1,6 @@
+        * doc fix in abstract (was previously copy/pasted from the
+	consumer module)
+
 0.11: (2007-04-16) - after year+ of being in svn, but not released. :)
 
 	* basic support for OpenID extensions (2006-03-13)
