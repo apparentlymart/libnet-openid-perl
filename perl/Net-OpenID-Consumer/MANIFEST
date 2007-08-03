@@ -6,4 +6,5 @@ lib/Net/OpenID/VerifiedIdentity.pm
 lib/Net/OpenID/ClaimedIdentity.pm
 lib/Net/OpenID/Association.pm
 t/00-use.t
+t/01-misc.t
 META.yml                                 Module meta-data (added by MakeMaker)
