@@ -9,7 +9,7 @@ use URI::Fetch 0.02;
 package Net::OpenID::Consumer;
 
 use vars qw($VERSION);
-$VERSION = "0.13";
+$VERSION = "0.14";
 
 use fields (
             'cache',           # the Cache object sent to URI::Fetch
@@ -97,7 +97,7 @@ sub args {
             return $self->{args}->($what);
         } elsif (ref $what eq "HASH") {
             $getter = sub { $what->{$_[0]}; };
-        } elsif (ref $what eq "CGI") {
+        } elsif (UNIVERSAL::isa($what, "CGI")) {
             $getter = sub { scalar $what->param($_[0]); };
         } elsif (ref $what eq "Apache") {
             my %get = $what->args;

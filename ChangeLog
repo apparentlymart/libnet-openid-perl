@@ -1,3 +1,8 @@
+0.14: (2007-08-03)
+
+	* allow CGI subclasses (like CGI::Fast) for args.  bug fix
+	  from Chris Kastorff <encryptio@gmail.com>.
+
 0.13:
 	* work-around bug in some openid servers that don't escape "+".
 	  so treat a space as a +.  (from Thomas Sibley
