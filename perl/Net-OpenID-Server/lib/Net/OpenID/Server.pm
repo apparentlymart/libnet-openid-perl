@@ -630,6 +630,7 @@ sub _fail {
 
 sub err {
     my Net::OpenID::Server $self = shift;
+    return undef unless $self->{last_errcode};
     $self->{last_errcode} . ": " . $self->{last_errtext};
 }
 
@@ -817,7 +818,7 @@ Net::OpenID::Server - library for building your own OpenID server
     post_args    => $cgi,
     get_user     => \&get_user,
     is_identity  => \&is_identity,
-    is_trusted   => \&is_trusted
+    is_trusted   => \&is_trusted,
     setup_url    => "http://example.com/pass-identity.bml",
   );
 
