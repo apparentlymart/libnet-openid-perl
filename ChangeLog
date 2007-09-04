@@ -1,3 +1,8 @@
+	* make ->err method return false when no error:
+	  http://rt.cpan.org/Ticket/Display.html?id=29109
+
+	* doc fix: http://rt.cpan.org/Ticket/Display.html?id=29110
+
         * doc fix in abstract (was previously copy/pasted from the
 	consumer module)
 
