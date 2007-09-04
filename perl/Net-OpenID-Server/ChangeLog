@@ -1,3 +1,5 @@
+0.12: 2007-09-03
+
 	* make ->err method return false when no error:
 	  http://rt.cpan.org/Ticket/Display.html?id=29109
 
