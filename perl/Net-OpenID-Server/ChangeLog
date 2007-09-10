@@ -1,3 +1,8 @@
+0.13: 2007-09-09
+
+	* remove test's non-used/non-declared "use" of DSA modules.
+	  makes test in auto-testers now.  also remove dead/old tests.
+
 0.12: 2007-09-03
 
 	* make ->err method return false when no error:
