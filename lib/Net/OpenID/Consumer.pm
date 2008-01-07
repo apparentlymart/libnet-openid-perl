@@ -31,7 +31,6 @@ use Digest::SHA1 ();
 use Crypt::DH 0.05;
 use Time::Local;
 use HTTP::Request;
-use Scalar::Util;
 
 sub new {
     my Net::OpenID::Consumer $self = shift;
@@ -98,7 +97,7 @@ sub args {
             return $self->{args}->($what);
         } elsif (ref $what eq "HASH") {
             $getter = sub { $what->{$_[0]}; };
-        } elsif (Scalar::Util::blessed($what) && $what->isa('CGI')) {
+        } elsif (UNIVERSAL::isa($what, "CGI")) {
             $getter = sub { scalar $what->param($_[0]); };
         } elsif (ref $what eq "Apache") {
             my %get = $what->args;
