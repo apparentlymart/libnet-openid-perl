@@ -1,3 +1,5 @@
+	* add method on claimed identity object to get delgated URL
+
 0.14: (2007-08-03)
 
 	* allow CGI subclasses (like CGI::Fast) for args.  bug fix
