@@ -31,6 +31,12 @@ sub claimed_url {
     return $self->{'identity'};
 }
 
+sub delegated_url {
+    my Net::OpenID::ClaimedIdentity $self = shift;
+    Carp::croak("Too many parameters") if @_;
+    return $self->{'delegate'};
+}
+
 sub identity_server {
     my Net::OpenID::ClaimedIdentity $self = shift;
     Carp::croak("Too many parameters") if @_;
@@ -142,6 +148,11 @@ check_url, though.
 
 Returns the identity server that will assert whether or not this
 claimed identity is valid, and sign a message saying so.
+
+=item $url = $cident->B<delegated_url>
+
+If the claimed URL is using delegation, this returns the delegated identity that will
+actually be sent to the identity server.
 
 =item $url = $cident->B<check_url>( %opts )
 
