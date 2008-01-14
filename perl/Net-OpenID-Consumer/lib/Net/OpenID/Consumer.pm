@@ -333,7 +333,7 @@ sub claimed_identity {
     $url = "http://$url" if $url && $url !~ m!^\w+://!;
     return $self->_fail("bogus_url", "Invalid URL") unless $url =~ m!^https?://!i;
     # add a slash, if none exists
-    $url .= "/" unless $url =~ m!^http://.+/!i;
+    $url .= "/" unless $url =~ m!^https?://.+/!i;
 
     my $final_url;
 
