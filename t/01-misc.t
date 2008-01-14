@@ -8,6 +8,9 @@ my $csr = Net::OpenID::Consumer->new;
 ok($csr, "instantiated");
 ok($csr->args(CGI::Subclass->new), "can set CGI subclass as args");
 
+package CGI::Subclass;
+use base 'CGI';
+
 package CGI;
 no warnings 'redefine';
 
@@ -15,8 +18,5 @@ sub new {
     my ($class) = @_;
     return bless {}, $class;
 }
-
-package CGI::Subclass;
-use base 'CGI';
 
 1;
