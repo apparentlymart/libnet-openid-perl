@@ -4,18 +4,24 @@ use Carp ();
 ############################################################################
 package Net::OpenID::ClaimedIdentity;
 use fields (
-            'identity',  # the canonical URL that was found, following redirects
-            'server',    # author-identity identity server endpoint
-            'consumer',  # ref up to the Net::OpenID::Consumer which generated us
-            'delegate',  # the delegated URL actually asserted by the server
-            );
+    'identity',         # the canonical URL that was found, following redirects
+    'server',           # author-identity identity server endpoint
+    'consumer',         # ref up to the Net::OpenID::Consumer which generated us
+    'delegate',         # the delegated URL actually asserted by the server
+    'protocol_version', # The version of the OpenID Authentication Protocol that is used
+);
 
 sub new {
     my Net::OpenID::ClaimedIdentity $self = shift;
     $self = fields::new( $self ) unless ref $self;
     my %opts = @_;
-    for my $f (qw( identity server consumer delegate )) {
+    for my $f (qw( identity server consumer delegate protocol_version )) {
         $self->{$f} = delete $opts{$f};
+    }
+
+    $self->{protocol_version} ||= 1;
+    unless ($self->{protocol_version} == 1 || $self->{protocol_version} == 2) {
+        Carp::croak("Unsupported protocol version");
     }
 
     # lowercase the scheme and hostname
@@ -41,6 +47,12 @@ sub identity_server {
     my Net::OpenID::ClaimedIdentity $self = shift;
     Carp::croak("Too many parameters") if @_;
     return $self->{server};
+}
+
+sub protocol_version {
+    my Net::OpenID::ClaimedIdentity $self = shift;
+    Carp::croak("Too many parameters") if @_;
+    return $self->{protocol_version};
 }
 
 sub check_url {
@@ -78,17 +90,40 @@ sub check_url {
                                "oic.time", "${sig_time}-$sig");
 
     my $curl = $ident_server;
-    OpenID::util::push_url_arg(\$curl,
-                               "openid.mode",           ($delayed_ret ? "checkid_setup" : "checkid_immediate"),
-                               "openid.identity",       $identity_arg,
-                               "openid.return_to",      $return_to,
+    if ($self->protocol_version == 1) {
+        OpenID::util::push_url_arg(\$curl,
+            "openid.mode"              => ($delayed_ret ? "checkid_setup" : "checkid_immediate"),
+            "openid.identity"          => $identity_arg,
+            "openid.return_to"         => $return_to,
 
-                               ($trust_root ?
-                                ("openid.trust_root",   $trust_root) : ()),
+            ($trust_root ? (
+                "openid.trust_root"    => $trust_root
+            ) : ()),
 
-                               ($assoc ?
-                                ("openid.assoc_handle", $assoc->handle) : ()),
-                               );
+            ($assoc ? (
+                "openid.assoc_handle"  => $assoc->handle
+            ) : ()),
+        );
+    }
+    elsif ($self->protocol_version == 2) {
+        # NOTE: OpenID Auth 2.0 uses different terminology for a bunch
+        # of things than 1.1 did. This library still uses the 1.1 terminology
+        # in its API.
+        OpenID::util::push_openid2_url_arg(\$curl,
+            "mode"                     => ($delayed_ret ? "checkid_setup" : "checkid_immediate"),
+            "claimed_id"               => $self->claimed_url,
+            "identity"                 => $identity_arg,
+            "return_to"                => $return_to,
+
+            ($trust_root ? (
+                "realm"                => $trust_root
+            ) : ()),
+
+            ($assoc ? (
+                "assoc_handle"         => $assoc->handle
+            ) : ()),
+        );
+    }
 
     $self->{consumer}->_debug("check_url for (del=$self->{delegate}, id=$self->{identity}) = $curl");
     return $curl;
@@ -197,6 +232,12 @@ When writing a dynamic "AJAX"-style application, you can't use
 delayed_return because the remote site can't usefully take control of
 a 1x1 pixel hidden IFRAME, so you'll need to get the user_setup_url
 and present it to the user somehow.
+
+=item C<protocol_version>
+
+Determines whether this identifier is to be verified by OpenID 1.1
+or by OpenID 2.0. Returns C<1> or C<2> respectively. This will
+affect the way the C<check_url> is constructed.
 
 =back
 

@@ -25,6 +25,7 @@ use fields (
 use Net::OpenID::ClaimedIdentity;
 use Net::OpenID::VerifiedIdentity;
 use Net::OpenID::Association;
+use Net::Yadis::Discovery;
 
 use MIME::Base64 ();
 use Digest::SHA1 ();
@@ -241,6 +242,15 @@ sub _find_semantic_info {
             next;
         }
 
+        # OpenID2 providers / local identifiers
+        # <link rel="openid2.provider" href="http://www.livejournal.com/misc/openid.bml" />
+        if ($type eq "link" &&
+            $val =~ /\brel=.openid2\.(provider|local_id)./i && ($temp = $1) &&
+            $val =~ m!\bhref=[\"\']([^\"\']+)[\"\']!i) {
+            $ret->{"openid2.$temp"} = $1;
+            next;
+        }
+
         # FOAF documents
         #<link rel="meta" type="application/rdf+xml" title="FOAF" href="http://brad.livejournal.com/data/foaf" />
         if ($type eq "link" &&
@@ -337,18 +347,71 @@ sub claimed_identity {
 
     my $final_url;
 
-    my $sem_info = $self->_find_semantic_info($url, \$final_url) or
-        return;
+    my $id_server;
+    my $delegate;
+    my $version;
 
-    my $id_server = $sem_info->{"openid.server"} or
-        return $self->_fail("no_identity_server");
+    # TODO: Support XRI too
+
+    # First we try Yadis service discovery
+    my $yadis = Net::Yadis::Discovery->new();
+    if ($yadis->discover($url)) {
+        $final_url = $yadis->identity_url;
+        my @servers = $yadis->servers(
+            OpenID::util::version_2_xrds_service_url(),
+            OpenID::util::version_2_xrds_directed_service_url(),
+            OpenID::util::version_1_xrds_service_url(),
+        );
+        foreach my $server (@servers) {
+            if ($server->Type eq OpenID::util::version_2_xrds_service_url()) {
+                # We have an OpenID 2.0 end-user identifier
+                $id_server = $server->URI;
+                $delegate = $server->extra_field("LocalID");
+                $version = 2;
+            }
+            elsif ($server->Type eq OpenID::util::version_1_xrds_service_url()) {
+                # We have an OpenID 1.1 end-user identifier
+                $id_server = $server->URI;
+                $delegate = $server->extra_field("Delegate", "http://openid.net/xmlns/1.0");
+                $version = 1;
+            }
+            elsif ($server->Type eq OpenID::util::version_2_xrds_directed_service_url()) {
+                # We have an OpenID 2.0 OP identifier (i.e. we're doing directed identity)
+                $id_server = $server->URI;
+                $version = 2;
+                # In this case, the user's claimed identifier is a magic value
+                # and the actual identifier will be determined by the provider.
+                $final_url = OpenID::util::version_2_identifier_select_url();
+                $delegate = OpenID::util::version_2_identifier_select_url();
+            }
+        }
+    }
+
+    # If Yadis didn't work out, we need to fall back on HTML-based discovery
+    unless ($id_server) {
+        my $sem_info = $self->_find_semantic_info($url, \$final_url) or return;
+
+        if ($sem_info->{"openid2.provider"}) {
+            $id_server = $sem_info->{"openid2.provider"};
+            $delegate = $sem_info->{"openid2.local_id"};
+            $version = 2;
+        }
+        elsif ($sem_info->{"openid.server"}) {
+            $id_server = $sem_info->{"openid.server"};
+            $delegate = $sem_info->{"openid.delegate"};
+            $version = 1;
+        }
+    }
+
+    return $self->_fail("no_identity_server") unless $id_server;
 
     return Net::OpenID::ClaimedIdentity->new(
-                                             identity => $final_url,
-                                             server   => $id_server,
-                                             consumer => $self,
-                                             delegate => $sem_info->{'openid.delegate'},
-                                             );
+        identity         => $final_url,
+        server           => $id_server,
+        consumer         => $self,
+        delegate         => $delegate,
+        protocol_version => $version,
+    );
 }
 
 sub user_cancel {
@@ -533,6 +596,30 @@ sub _get_consumer_secret {
 
 package OpenID::util;
 
+use constant VERSION_1_NAMESPACE => "http://openid.net/signon/1.1";
+use constant VERSION_2_NAMESPACE => "http://specs.openid.net/auth/2.0";
+
+# I guess this is a bit daft since constants are subs anyway,
+# but whatever.
+sub version_1_namespace {
+    return VERSION_1_NAMESPACE;
+}
+sub version_2_namespace {
+    return VERSION_2_NAMESPACE;
+}
+sub version_1_xrds_service_url {
+    return VERSION_1_NAMESPACE;
+}
+sub version_2_xrds_service_url {
+    return "http://specs.openid.net/auth/2.0/signon";
+}
+sub version_2_xrds_directed_service_url {
+    return "http://specs.openid.net/auth/2.0/server";
+}
+sub version_2_identifier_select_url {
+    return "http://specs.openid.net/auth/2.0/identifier_select";
+}
+
 # From Digest::HMAC
 sub hmac_sha1_hex {
     unpack("H*", &hmac_sha1);
@@ -610,6 +697,17 @@ sub push_url_arg {
         $$uref .= $got_qmark ? "&" : ($got_qmark = 1, "?");
         $$uref .= eurl($key) . "=" . eurl($value);
     }
+}
+
+sub push_openid2_url_arg {
+    my $uref = shift;
+    my %args = @_;
+    push_url_arg($uref,
+        'openid.ns' => VERSION_2_NAMESPACE,
+        map {
+            'openid.'.$_ => $args{$_}
+        } keys %args,
+    );
 }
 
 sub time_to_w3c {
