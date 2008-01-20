@@ -2,6 +2,7 @@ use ExtUtils::MakeMaker;
 WriteMakefile( 'NAME' => 'Net::OpenID::Consumer',
                'VERSION_FROM' => 'lib/Net/OpenID/Consumer.pm',
                'PREREQ_PM'		=> {
+                   'Net::Yadis::Discovery' => 0,
                    'LWP::UserAgent' => 0,
                    'HTTP::Request'  => 0,
                    'MIME::Base64'   => 0,

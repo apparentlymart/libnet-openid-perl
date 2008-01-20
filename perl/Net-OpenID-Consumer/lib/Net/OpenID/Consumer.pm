@@ -351,10 +351,12 @@ sub claimed_identity {
     my $delegate;
     my $version;
 
-    # TODO: Support XRI too
+    # TODO: Support XRI too?
 
     # First we try Yadis service discovery
-    my $yadis = Net::Yadis::Discovery->new();
+    my $yadis = Net::Yadis::Discovery->new(
+                                           ua => $self->{ua},
+                                           );
     if ($yadis->discover($url)) {
         $final_url = $yadis->identity_url;
         my @servers = $yadis->servers(
