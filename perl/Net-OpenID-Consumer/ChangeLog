@@ -1,3 +1,5 @@
+	* add hooks for openid-test project. (bradfitz)
+
 	* add OpenID 2.0-compliant discovery and authentication request.
 	  However, it does NOT yet support the OpenID 2.0 *responses*,
 	  so at the present time this will fail in strange ways when

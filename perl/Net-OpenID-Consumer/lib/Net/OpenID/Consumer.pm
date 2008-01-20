@@ -354,9 +354,7 @@ sub claimed_identity {
     # TODO: Support XRI too?
 
     # First we try Yadis service discovery
-    my $yadis = Net::Yadis::Discovery->new(
-                                           ua => $self->{ua},
-                                           );
+    my $yadis = Net::Yadis::Discovery->new(ua => $self->{ua});
     if ($yadis->discover($url)) {
         $final_url = $yadis->identity_url;
         my @servers = $yadis->servers(

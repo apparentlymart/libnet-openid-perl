@@ -62,6 +62,9 @@ sub check_url {
     my $return_to   = delete $opts{'return_to'};
     my $trust_root  = delete $opts{'trust_root'};
     my $delayed_ret = delete $opts{'delayed_return'};
+    my $force_reassociate = delete $opts{'force_reassociate'};
+    my $use_assoc_handle = delete $opts{'use_assoc_handle'};
+    my $actually_return_association = delete $opts{'actually_return_association'};
 
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
     Carp::croak("Invalid/missing return_to") unless $return_to =~ m!^https?://!;
@@ -72,7 +75,17 @@ sub check_url {
         Carp::croak("No identity server");
 
     # get an assoc (or undef for dumb mode)
-    my $assoc = Net::OpenID::Association::server_assoc($csr, $ident_server);
+    my $assoc;
+    if ($use_assoc_handle) {
+        $assoc = Net::OpenID::Association::handle_assoc($csr, $ident_server, $use_assoc_handle);
+    } else {
+        $assoc = Net::OpenID::Association::server_assoc($csr, $ident_server, $force_reassociate);
+    }
+
+    # for the openid-test project: (doing interop testing)
+    if ($actually_return_association) {
+        return $assoc;
+    }
 
     my $identity_arg = $self->{'delegate'} || $self->{'identity'};
 
