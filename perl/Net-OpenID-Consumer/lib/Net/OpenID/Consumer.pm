@@ -25,7 +25,7 @@ use fields (
 use Net::OpenID::ClaimedIdentity;
 use Net::OpenID::VerifiedIdentity;
 use Net::OpenID::Association;
-use Net::Yadis::Discovery;
+use Net::OpenID::Yadis;
 
 use MIME::Base64 ();
 use Digest::SHA1 ();
@@ -354,30 +354,30 @@ sub claimed_identity {
     # TODO: Support XRI too?
 
     # First we try Yadis service discovery
-    my $yadis = Net::Yadis::Discovery->new(ua => $self->{ua});
+    my $yadis = Net::OpenID::Yadis->new(ua => $self->{ua});
     if ($yadis->discover($url)) {
         $final_url = $yadis->identity_url;
-        my @servers = $yadis->servers(
+        my @services = $yadis->services(
             OpenID::util::version_2_xrds_service_url(),
             OpenID::util::version_2_xrds_directed_service_url(),
             OpenID::util::version_1_xrds_service_url(),
         );
-        foreach my $server (@servers) {
-            if ($server->Type eq OpenID::util::version_2_xrds_service_url()) {
+        foreach my $service (@services) {
+            if ($service->Type eq OpenID::util::version_2_xrds_service_url()) {
                 # We have an OpenID 2.0 end-user identifier
-                $id_server = $server->URI;
-                $delegate = $server->extra_field("LocalID");
+                $id_server = $service->URI;
+                $delegate = $service->extra_field("LocalID");
                 $version = 2;
             }
-            elsif ($server->Type eq OpenID::util::version_1_xrds_service_url()) {
+            elsif ($service->Type eq OpenID::util::version_1_xrds_service_url()) {
                 # We have an OpenID 1.1 end-user identifier
-                $id_server = $server->URI;
-                $delegate = $server->extra_field("Delegate", "http://openid.net/xmlns/1.0");
+                $id_server = $service->URI;
+                $delegate = $service->extra_field("Delegate", "http://openid.net/xmlns/1.0");
                 $version = 1;
             }
-            elsif ($server->Type eq OpenID::util::version_2_xrds_directed_service_url()) {
+            elsif ($service->Type eq OpenID::util::version_2_xrds_directed_service_url()) {
                 # We have an OpenID 2.0 OP identifier (i.e. we're doing directed identity)
-                $id_server = $server->URI;
+                $id_server = $service->URI;
                 $version = 2;
                 # In this case, the user's claimed identifier is a magic value
                 # and the actual identifier will be determined by the provider.

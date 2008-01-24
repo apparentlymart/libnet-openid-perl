@@ -1,3 +1,7 @@
+	* use our own simplified fork of Net::Yadis::Discovery to avoid
+	  dependency on Module::Pluggable::Fast. Or on Net::Yadis::Discovery,
+	  for that matter.
+
 	* add hooks for openid-test project. (bradfitz)
 
 	* add OpenID 2.0-compliant discovery and authentication request.
