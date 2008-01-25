@@ -3,12 +3,13 @@ package Net::OpenID::IndirectMessage;
 
 use strict;
 use Carp;
+use Net::OpenID::Consumer;
 
 sub new {
     my $class = shift;
     my $what = shift;
 
-    my $self = bless {}, $what;
+    my $self = bless {}, $class;
 
     Carp::croak("Too many parameters") if @_;
     my $getter;
@@ -16,23 +17,28 @@ sub new {
     if (ref $what eq "HASH") {
         $getter = sub { $what->{$_[0]}; };
         $enumer = sub { keys(%$what); };
-    } elsif (UNIVERSAL::isa($what, "CGI")) {
+    }
+    elsif (UNIVERSAL::isa($what, "CGI")) {
         $getter = sub { scalar $what->param($_[0]); };
         $enumer = sub { $what->param; };
-    } elsif (ref $what eq "Apache") {
+    }
+    elsif (ref $what eq "Apache") {
         my %get = $what->args;
         $getter = sub { $get{$_[0]}; };
-        $enumer = sub { keys(%$get); };
-    } elsif (ref $what eq "Apache::Request") {
+        $enumer = sub { keys(%get); };
+    }
+    elsif (ref $what eq "Apache::Request") {
         $getter = sub { scalar $what->param($_[0]); };
         $enumer = sub { $what->param; };
-    } elsif (ref $what eq "CODE") {
+    }
+    elsif (ref $what eq "CODE") {
         $getter = $what;
         # We can't enumerate with just a coderef.
         # OpenID 2 spec only requires enumeration to support
         # extension namespaces, so we don't care too much.
         $enumer = sub { return (); };
-    } else {
+    }
+    else {
         Carp::croak("Unknown parameter type ($what)");
     }
     $self->{getter} = $getter;
@@ -46,7 +52,7 @@ sub new {
 
     # Is this an OpenID 2.0 message?
     my $ns = $self->get('ns');
-    if ($ns eq Net::OpenID::util::version_2_namespace) {
+    if ($ns eq OpenID::util::version_2_namespace()) {
         $self->{protocol_version} = 2;
     }
     elsif (! defined($ns)) {
@@ -61,6 +67,7 @@ sub new {
     # This will be populated in on demand
     $self->{extension_prefixes} = undef;
 
+    return $self;
 }
 
 sub protocol_version {
@@ -77,7 +84,7 @@ sub get {
     # anyway.
 
     # Arguments can only contain letters, numbers, underscores and dashes
-    Carp::croak("Invalid argument key") unless $key =~ /^[\W\-]+$/;
+    Carp::croak("Invalid argument key $key") unless $key =~ /^[\w\-]+$/;
     Carp::croak("Too many arguments") if scalar(@_);
 
     return $self->{getter}->("openid.$key");
@@ -102,10 +109,11 @@ sub get_ext {
         my $prefix = "openid.$alias.";
         my $prefixlen = length($prefix);
         my $ret = {};
-        foreach my $key ($self->{enumer}) {
+        foreach my $key ($self->{enumer}->()) {
             next unless substr($key, 0, $prefixlen) eq $prefix;
-            $ret{substr($key, $prefixlen)} = $self->{getter}->($prefix.$key);
+            $ret->{substr($key, $prefixlen)} = $self->{getter}->($key);
         }
+        return $ret;
     }
 }
 
@@ -139,6 +147,8 @@ sub _compute_extension_prefixes {
         $self->{extension_prefixes}{"http://openid.net/extensions/sreg/1.1"} = "sreg";
     }
 }
+
+1;
 
 =head1 NAME
 
