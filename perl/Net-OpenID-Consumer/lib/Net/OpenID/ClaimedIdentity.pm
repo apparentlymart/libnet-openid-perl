@@ -90,7 +90,8 @@ sub check_url {
     my $identity_arg = $self->{'delegate'} || $self->{'identity'};
 
     # make a note back to ourselves that we're using a delegate
-    if ($self->{'delegate'}) {
+    # but only in the 1.1 case because 2.0 has a core field for this
+    if ($self->{'delegate'} && $self->protocol_version == 1) {
         OpenID::util::push_url_arg(\$return_to,
                                    "oic.identity",  $self->{identity});
     }

@@ -12,20 +12,22 @@ use vars qw($VERSION);
 $VERSION = "0.14";
 
 use fields (
-            'cache',           # the Cache object sent to URI::Fetch
-            'ua',              # LWP::UserAgent instance to use
-            'args',            # how to get at your args
-            'consumer_secret', # scalar/subref
-            'required_root',   # the default required_root value, or undef
-            'last_errcode',    # last error code we got
-            'last_errtext',    # last error code we got
-            'debug',           # debug flag or codeblock
-            );
+    'cache',           # the Cache object sent to URI::Fetch
+    'ua',              # LWP::UserAgent instance to use
+    'args',            # how to get at your args
+    'message',         # args interpreted as an IndirectMessage, if possible
+    'consumer_secret', # scalar/subref
+    'required_root',   # the default required_root value, or undef
+    'last_errcode',    # last error code we got
+    'last_errtext',    # last error code we got
+    'debug',           # debug flag or codeblock
+);
 
 use Net::OpenID::ClaimedIdentity;
 use Net::OpenID::VerifiedIdentity;
 use Net::OpenID::Association;
 use Net::OpenID::Yadis;
+use Net::OpenID::IndirectMessage;
 
 use MIME::Base64 ();
 use Digest::SHA1 ();
@@ -112,9 +114,30 @@ sub args {
         }
         if ($getter) {
             $self->{args} = $getter;
+            $self->{message} = Net::OpenID::IndirectMessage->new($what);
         }
     }
     $self->{args};
+}
+
+sub message {
+    my Net::OpenID::Consumer $self = shift;
+    if (my $key = shift) {
+        return $self->{message} ? $self->{message}->get($key) : undef;
+    }
+    else {
+        return $self->{message};
+    }
+}
+
+sub _message_mode {
+    my $message = $_[0]->message;
+    return $message ? $message->mode : undef;
+}
+
+sub _message_version {
+    my $message = $_[0]->message;
+    return $message ? $message->protocol_version : undef;
 }
 
 sub ua {
@@ -141,6 +164,7 @@ sub _fail {
         'bogus_url' => "Invalid URL.",
         'no_head_tag' => "URL provided doesn't seem to have a head tag.",
         'url_fetch_err' => "Error fetching the provided URL.",
+        'bad_mode' => "The openid.mode argument is not correct",
     }->{$code};
 
     $self->{last_errcode} = $code;
@@ -416,7 +440,7 @@ sub claimed_identity {
 
 sub user_cancel {
     my Net::OpenID::Consumer $self = shift;
-    return $self->args("openid.mode") eq "cancel";
+    return $self->_message_mode eq "cancel";
 }
 
 sub user_setup_url {
@@ -424,9 +448,15 @@ sub user_setup_url {
     my %opts = @_;
     my $post_grant = delete $opts{'post_grant'};
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
-    return $self->_fail("bad_mode") unless $self->args("openid.mode") eq "id_res";
 
-    my $setup_url = $self->args("openid.user_setup_url");
+    if ($self->_message_version == 1) {
+        return $self->_fail("bad_mode") unless $self->_message_mode eq "id_res";
+    }
+    else {
+        return undef unless $self->_message_mode eq 'setup_needed';
+    }
+
+    my $setup_url = $self->message("user_setup_url");
 
     OpenID::util::push_url_arg(\$setup_url, "openid.post_grant", $post_grant)
         if $setup_url && $post_grant;
@@ -441,21 +471,27 @@ sub verified_identity {
     my $rr = delete $opts{'required_root'} || $self->{required_root};
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
 
-    return $self->_fail("bad_mode") unless $self->args("openid.mode") eq "id_res";
+    return $self->_fail("bad_mode") unless $self->_message_mode eq "id_res";
 
     # the asserted identity (the delegated one, if there is one, since the protocol
     # knows nothing of the original URL)
-    my $a_ident  = $self->args("openid.identity")     or return $self->_fail("no_identity");
+    my $a_ident  = $self->message("identity")     or return $self->_fail("no_identity");
 
-    my $sig64    = $self->args("openid.sig")          or return $self->_fail("no_sig");
-    
+    my $sig64    = $self->message("sig")          or return $self->_fail("no_sig");
+
     # fix sig if the OpenID auth server failed to properly escape pluses (+) in the sig
     $sig64 =~ s/ /+/g;
 
-    my $returnto = $self->args("openid.return_to")    or return $self->_fail("no_return_to");
-    my $signed   = $self->args("openid.signed");
+    my $returnto = $self->message("return_to")    or return $self->_fail("no_return_to");
+    my $signed   = $self->message("signed");
 
-    my $real_ident = $self->args("oic.identity") || $a_ident;
+    my $real_ident;
+    if ($self->_message_version == 1) {
+        $real_ident = $self->args("oic.identity") || $a_ident;
+    }
+    else {
+        $real_ident = $self->message("claimed_id") || $a_ident;
+    }
 
     # check that returnto is for the right host
     return $self->_fail("bogus_return_to") if $rr && $returnto !~ /^\Q$rr\E/;
@@ -487,7 +523,7 @@ sub verified_identity {
         return $self->_fail("bogus_delegation") unless $sem_info->{"openid.delegate"} eq $a_ident;
     }
 
-    my $assoc_handle = $self->args("openid.assoc_handle");
+    my $assoc_handle = $self->message("assoc_handle");
 
     $self->_debug("verified_identity: assoc_handle: $assoc_handle");
     my $assoc = Net::OpenID::Association::handle_assoc($self, $server, $assoc_handle);
@@ -525,7 +561,7 @@ sub verified_identity {
         # and copy in all signed parameters that we don't already have into %post
         foreach my $param (split(/,/, $signed)) {
             next unless $param =~ /^[\w\.]+$/;
-            my $val = $self->args("openid.$param");
+            my $val = $self->args('openid.'.$param);
             $signed_fields{$param} = $val;
             next if $post{"openid.$param"};
             $post{"openid.$param"} = $val;
@@ -533,7 +569,7 @@ sub verified_identity {
 
         # if the server told us our handle as bogus, let's ask in our
         # check_authentication mode whether that's true
-        if (my $ih = $self->args("openid.invalidate_handle")) {
+        if (my $ih = $self->message("invalidate_handle")) {
             $post{"openid.invalidate_handle"} = $ih;
         }
 
@@ -892,6 +928,15 @@ the same time.)
 
 Your secret may not exceed 255 characters.
 
+=item $csr->B<message>($key)
+
+Obtain a value from the message contained in the request arguments
+with the given key. This can only be used to obtain core arguments,
+not extension arguments.
+
+Call this method with out a C<$key> argument to get a L<Net::OpenID::IndirectMessage>
+object representing the message.
+
 =item $csr->B<args>($ref)
 
 =item $csr->B<args>($param)
@@ -915,12 +960,19 @@ my $foo = $csr->args("foo");
 When given an unblessed scalar, it retrieves the value.  It croaks if
 you haven't defined a way to get at the parameters.
 
+Most callers should instead use the C<message> method above, which
+abstracts away the need to understand OpenID's message serialization.
+
 3. Get the getter:
 
 my $code = $csr->args;
 
 Without arguments, returns a subref that returns the value given a
 parameter name.
+
+Most callers should instead use the C<message> method above with no
+arguments, which returns an object from which extension attributes
+can be obtained by their documented namespace URI.
 
 =item $nos->B<required_root>($url_prefix)
 
