@@ -9,13 +9,14 @@ use fields (
     'consumer',         # ref up to the Net::OpenID::Consumer which generated us
     'delegate',         # the delegated URL actually asserted by the server
     'protocol_version', # The version of the OpenID Authentication Protocol that is used
+    'semantic_info',    # Stuff that we've discovered in the identifier page's metadata
 );
 
 sub new {
     my Net::OpenID::ClaimedIdentity $self = shift;
     $self = fields::new( $self ) unless ref $self;
     my %opts = @_;
-    for my $f (qw( identity server consumer delegate protocol_version )) {
+    for my $f (qw( identity server consumer delegate protocol_version semantic_info )) {
         $self->{$f} = delete $opts{$f};
     }
 
@@ -53,6 +54,17 @@ sub protocol_version {
     my Net::OpenID::ClaimedIdentity $self = shift;
     Carp::croak("Too many parameters") if @_;
     return $self->{protocol_version};
+}
+
+sub semantic_info {
+    my Net::OpenID::ClaimedIdentity $self = shift;
+    Carp::croak("Too many parameters") if @_;
+    return $self->{semantic_info} if $self->{semantic_info};
+    my $final_url = '';
+    my $info = $self->{consumer}->_find_semantic_info($self->claimed_url, \$final_url);
+    # Don't return anything if the URL has changed. Something bad may be happening.
+    $info = {} if $final_url ne $self->claimed_url;
+    return $self->{semantic_info} = $info;
 }
 
 sub check_url {

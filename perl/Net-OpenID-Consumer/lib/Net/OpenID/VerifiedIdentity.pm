@@ -4,18 +4,16 @@ use Carp ();
 ############################################################################
 package Net::OpenID::VerifiedIdentity;
 use fields (
-            'identity',  # the verified identity URL
-            'id_uri',  # the verified identity's URI object
+    'identity',  # the verified identity URL
+    'id_uri',  # the verified identity's URI object
 
-            'foaf',      # discovered foaf URL
-            'foafmaker', # discovered foaf maker
-            'rss',       # discovered rss feed
-            'atom',      # discovered atom feed
+    'claimed_identity', # The ClaimedIdentity object that we've verified
+    'semantic_info',    # The "semantic info" (RSS URLs, etc) at the verified identity URL
 
-            'consumer',  # The Net::OpenID::Consumer module which created us
+    'consumer',  # The Net::OpenID::Consumer module which created us
 
-            'signed_fields' ,  # hashref of key->value of things that were signed.  without "openid." prefix
-            );
+    'signed_fields' ,  # hashref of key->value of things that were signed.  without "openid." prefix
+);
 use URI;
 
 sub new {
@@ -25,13 +23,14 @@ sub new {
 
     $self->{'consumer'} = delete $opts{'consumer'};
 
-    if ($self->{'identity'} = delete $opts{'identity'}) {
+    if ($self->{'claimed_identity'} = delete $opts{'claimed_identity'}) {
+        $self->{identity} = $self->{claimed_identity}->claimed_url;
         unless ($self->{'id_uri'} = URI->new($self->{identity})) {
             return $self->{'consumer'}->_fail("invalid_uri");
         }
     }
 
-    for my $par (qw(foaf foafmaker rss atom signed_fields)) {
+    for my $par (qw(signed_fields)) {
         $self->$par(delete $opts{$par});
     }
 
@@ -49,12 +48,34 @@ sub display {
     return DisplayOfURL($self->{'identity'});
 }
 
-sub foafmaker     { &_getset;        }
+sub _semantic_info_hash {
+    my ($self) = @_;
+    return $self->{semantic_info} if $self->{semantic_info};
+    my $sem_info = $self->{claimed_identity}->semantic_info;
+    $self->{semantic_info} = {
+        'foaf' => $self->_identity_relative_uri($sem_info->{"foaf"}),
+        'foafmaker' => $sem_info->{"foaf.maker"},
+        'rss' => $self->_identity_relative_uri($sem_info->{"rss"}),
+        'atom' => $self->_identity_relative_uri($sem_info->{"atom"}),
+    };
+    return $self->{semantic_info};
+}
+
+sub _identity_relative_uri {
+    my $self = shift;
+    my $url = shift;
+
+    return $url if ref $url;
+    return undef unless $url;
+    return URI->new_abs($url, $self->{'id_uri'});
+}
+
 sub signed_fields { &_getset;        }
 
 sub foaf      { &_getset_semurl; }
 sub rss       { &_getset_semurl; }
 sub atom      { &_getset_semurl; }
+sub foafmaker     { &_getset_sem; }
 
 sub declared_foaf   { &_dec_semurl; }
 sub declared_rss    { &_dec_semurl; }
@@ -73,20 +94,36 @@ sub _getset {
     return $self->{$param};
 }
 
+sub _getset_sem {
+    my $self = shift;
+    my $param = (caller(1))[3];
+    $param =~ s/.+:://;
+
+    my $info = $self->_semantic_info_hash;
+
+    if (my $value = shift) {
+        Carp::croak("Too many parameters") if @_;
+        $info->{$param} = $value;
+    }
+    return $info->{$param};
+}
+
 sub _getset_semurl {
     my $self = shift;
     my $param = (caller(1))[3];
     $param =~ s/.+:://;
+
+    my $info = $self->_semantic_info_hash;
 
     if (my $surl = shift) {
         Carp::croak("Too many parameters") if @_;
 
         # TODO: make absolute URL from possibly relative one
         my $abs = URI->new_abs($surl, $self->{'id_uri'});
-        $self->{$param} = $abs;
+        $info->{$param} = $abs;
     }
 
-    my $uri = $self->{$param};
+    my $uri = $info->{$param};
     return $uri && _url_is_under($self->{'id_uri'}, $uri) ? $uri->as_string : undef;
 }
 
@@ -95,7 +132,9 @@ sub _dec_semurl {
     my $param = (caller(1))[3];
     $param =~ s/.+::declared_//;
 
-    my $uri = $self->{$param};
+    my $info = $self->_semantic_info_hash;
+
+    my $uri = $info->{$param};
     return $uri ? $uri->as_string : undef;
 }
 

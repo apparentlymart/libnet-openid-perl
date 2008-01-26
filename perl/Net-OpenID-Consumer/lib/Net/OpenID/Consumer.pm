@@ -382,12 +382,17 @@ sub claimed_identity {
     my $id_server;
     my $delegate;
     my $version;
+    my $sem_info = undef;
 
     # TODO: Support XRI too?
 
     # First we try Yadis service discovery
     my $yadis = Net::OpenID::Yadis->new(ua => $self->{ua});
     if ($yadis->discover($url)) {
+        # FIXME: Currently we don't ever do _find_semantic_info in the Yadis
+        # code path, so an extra redundant HTTP request is done later
+        # when the semantic info is accessed.
+
         $final_url = $yadis->identity_url;
         my @services = $yadis->services(
             OpenID::util::version_2_xrds_service_url(),
@@ -421,7 +426,7 @@ sub claimed_identity {
 
     # If Yadis didn't work out, we need to fall back on HTML-based discovery
     unless ($id_server) {
-        my $sem_info = $self->_find_semantic_info($url, \$final_url) or return;
+        $sem_info = $self->_find_semantic_info($url, \$final_url) or return;
 
         if ($sem_info->{"openid2.provider"}) {
             $id_server = $sem_info->{"openid2.provider"};
@@ -444,6 +449,7 @@ sub claimed_identity {
         consumer         => $self,
         delegate         => $delegate,
         protocol_version => $version,
+        semantic_info    => $sem_info,
     );
 }
 
@@ -531,10 +537,6 @@ sub verified_identity {
     # Protocol version must match
     return $self->_fail("protocol_version_incorrect") unless $claimed_identity->protocol_version == $self->_message_version;
 
-    # FIXME: Should save the semantic info inside claimed_identity
-    #  to avoid refetching it here.
-    my $sem_info = $self->_find_semantic_info($real_ident, \$final_url);
-
     # if openid.delegate was used, check that it was done correctly
     if ($a_ident ne $real_ident) {
         my $delegate = $claimed_identity->delegated_url;
@@ -619,14 +621,10 @@ sub verified_identity {
 
     # verified!
     return Net::OpenID::VerifiedIdentity->new(
-                                              identity  => $real_ident,
-                                              foaf      => $sem_info->{"foaf"},
-                                              foafmaker => $sem_info->{"foaf.maker"},
-                                              rss       => $sem_info->{"rss"},
-                                              atom      => $sem_info->{"atom"},
-                                              consumer  => $self,
-                                              signed_fields => \%signed_fields,
-                                              );
+        claimed_identity => $claimed_identity,
+        consumer  => $self,
+        signed_fields => \%signed_fields,
+    );
 }
 
 sub supports_consumer_secret { 1; }

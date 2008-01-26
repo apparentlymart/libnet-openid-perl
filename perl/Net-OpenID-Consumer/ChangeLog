@@ -1,3 +1,5 @@
+	* add support for OpenID 2.0-style messages from providers
+
 	* use our own simplified fork of Net::Yadis::Discovery to avoid
 	  dependency on Module::Pluggable::Fast. Or on Net::Yadis::Discovery,
 	  for that matter.
@@ -5,9 +7,6 @@
 	* add hooks for openid-test project. (bradfitz)
 
 	* add OpenID 2.0-compliant discovery and authentication request.
-	  However, it does NOT yet support the OpenID 2.0 *responses*,
-	  so at the present time this will fail in strange ways when
-	  logging in to a 2.0 OP.
 
 	* add method on claimed identity object to get delgated URL
 
