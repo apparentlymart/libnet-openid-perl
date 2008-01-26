@@ -69,7 +69,7 @@ my $basic_test = sub {
     my $version = shift;
 
     ok($args->protocol_version == $version, "detected version $version");
-    ok($args->get('mode') == 'id_res', "v$version mode correct");
+    ok($args->mode == 'id_res', "v$version mode correct");
     ok($args->get('test') == 'success', "v$version test correct");
     ok($args->get('missing') == undef, "v$version missing correctly");
     should_die(sub { $args->get('sreg.fullname'); }, "v$version access invalid keyname croaks");

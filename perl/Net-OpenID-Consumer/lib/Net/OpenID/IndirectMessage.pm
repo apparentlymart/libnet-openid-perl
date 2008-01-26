@@ -74,6 +74,11 @@ sub protocol_version {
     return $_[0]->{protocol_version};
 }
 
+sub mode {
+    my $self = shift;
+    return $self->get('mode');
+}
+
 sub get {
     my $self = shift;
     my $key = shift or Carp::croak("No argument name supplied to get method");
