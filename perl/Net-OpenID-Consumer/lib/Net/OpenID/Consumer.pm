@@ -21,6 +21,7 @@ use fields (
     'last_errcode',    # last error code we got
     'last_errtext',    # last error code we got
     'debug',           # debug flag or codeblock
+    'minimum_version', # The minimum protocol version to support
 );
 
 use Net::OpenID::ClaimedIdentity;
@@ -40,11 +41,14 @@ sub new {
     $self = fields::new( $self ) unless ref $self;
     my %opts = @_;
 
+    $opts{minimum_version} ||= 1;
+
     $self->{ua}            = delete $opts{ua};
     $self->args            ( delete $opts{args}            );
     $self->cache           ( delete $opts{cache}           );
     $self->consumer_secret ( delete $opts{consumer_secret} );
     $self->required_root   ( delete $opts{required_root}   );
+    $self->minimum_version ( delete $opts{minimum_version} );
 
     $self->{debug} = delete $opts{debug};
 
@@ -55,6 +59,7 @@ sub new {
 sub cache           { &_getset; }
 sub consumer_secret { &_getset; }
 sub required_root   { &_getset; }
+sub minimum_version { &_getset; }
 
 sub _getset {
     my Net::OpenID::Consumer $self = shift;
@@ -114,7 +119,7 @@ sub args {
         }
         if ($getter) {
             $self->{args} = $getter;
-            $self->{message} = Net::OpenID::IndirectMessage->new($what);
+            $self->{message} = Net::OpenID::IndirectMessage->new($what, minimum_version => $self->minimum_version);
         }
     }
     $self->{args};
@@ -165,6 +170,7 @@ sub _fail {
         'no_head_tag' => "URL provided doesn't seem to have a head tag.",
         'url_fetch_err' => "Error fetching the provided URL.",
         'bad_mode' => "The openid.mode argument is not correct",
+        'protocol_version_insufficient' => "The provided URL does not support a sufficiently-modern protocol version",
     }->{$code};
 
     $self->{last_errcode} = $code;
@@ -427,6 +433,7 @@ sub claimed_identity {
         }
     }
 
+    return $self->_fail("protocol_version_insufficient") unless $version >= $self->minimum_version;
     return $self->_fail("no_identity_server") unless $id_server;
 
     return Net::OpenID::ClaimedIdentity->new(
@@ -876,8 +883,8 @@ identity.  More information is available at:
 my $csr = Net::OpenID::Consumer->new([ %opts ]);
 
 You can set the C<ua>, C<cache>, C<consumer_secret>, C<required_root>,
-and C<args> in the constructor.  See the corresponding method
-descriptions below.
+C<minimum_version> and C<args> in the constructor.  See the corresponding
+method descriptions below.
 
 =back
 
@@ -927,6 +934,18 @@ And if one doesn't exist for that time, create, store and return it
 the same time.)
 
 Your secret may not exceed 255 characters.
+
+=item $csr->B<minimum_version>(2)
+
+=item $csr->B<minimum_version>
+
+Get or set the minimum OpenID protocol version supported. Currently
+the only useful value you can set here is 2, which will cause
+1.1 identifiers to fail discovery with the error C<protocol_version_insufficient>.
+
+In most cases you'll want to allow both 1.1 and 2.0 identifiers,
+which is the default. If you want, you can set this property to 1
+to make this behavior explicit.
 
 =item $csr->B<message>($key)
 

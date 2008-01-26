@@ -83,6 +83,9 @@ $basic_test->($good_v2_args, 2);
 # A valid OpenID 1.1 message
 $basic_test->($good_v1_args, 1);
 
+# OpenID 1.1 message to consumer when we only support 2.0 or above
+ok(args(\%basic_v1_args, minimum_version => 2) == undef, "2.0-only doesn't understand 1.1");
+
 my $sreg_test = sub {
     my $args = shift;
     my $version = shift;
@@ -132,7 +135,7 @@ should_die(sub { args("HELLO WORLD!"); }, "passing string into constructor croak
 should_die(sub { args(); }, "passing nothing into constructor croaks");
 
 sub args {
-    return Net::OpenID::IndirectMessage->new($_[0]);
+    return Net::OpenID::IndirectMessage->new(@_);
 }
 
 sub should_die {

@@ -8,10 +8,14 @@ use Net::OpenID::Consumer;
 sub new {
     my $class = shift;
     my $what = shift;
+    my %opts = @_;
 
     my $self = bless {}, $class;
 
-    Carp::croak("Too many parameters") if @_;
+    $self->{minimum_version} = delete $opts{minimum_version};
+
+    Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
+
     my $getter;
     my $enumer;
     if (ref $what eq "HASH") {
@@ -57,7 +61,13 @@ sub new {
     }
     elsif (! defined($ns)) {
         # No namespace at all means a 1.1 message
-        $self->{protocol_version} = 1;
+        if ($self->{minimum_version} <= 1) {
+            $self->{protocol_version} = 1;
+        }
+        else {
+            # Pretend we don't understand the message.
+            return undef;
+        }
     }
     else {
         # Unknown version is the same as not being an OpenID message at all
