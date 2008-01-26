@@ -170,7 +170,9 @@ sub _fail {
         'no_head_tag' => "URL provided doesn't seem to have a head tag.",
         'url_fetch_err' => "Error fetching the provided URL.",
         'bad_mode' => "The openid.mode argument is not correct",
-        'protocol_version_insufficient' => "The provided URL does not support a sufficiently-modern protocol version",
+        'protocol_version_incorrect' => "The provided URL uses the wrong protocol version",
+        'naive_verify_failed_return' => "Provider says signature is invalid",
+        'naive_verify_failed_network' => "Could not contact provider to verify signature",
     }->{$code};
 
     $self->{last_errcode} = $code;
@@ -341,7 +343,7 @@ sub _find_semantic_info {
         $ret->{$k} =~ s/&(\w+);/$emap->{$1} || ""/eg;
     }
 
-    $self->_debug("semantic info ($url) = " . join(", ", %$ret));
+    $self->_debug("semantic info ($url) = " . join(", ", map { $_.' => '.$ret->{$_} } keys %$ret)) if $self->{debug};
 
     return $ret;
 }
@@ -433,7 +435,7 @@ sub claimed_identity {
         }
     }
 
-    return $self->_fail("protocol_version_insufficient") unless $version >= $self->minimum_version;
+    return $self->_fail("protocol_version_incorrect") unless $version >= $self->minimum_version;
     return $self->_fail("no_identity_server") unless $id_server;
 
     return Net::OpenID::ClaimedIdentity->new(
@@ -518,16 +520,26 @@ sub verified_identity {
         return $self->_fail("time_bad_sig") unless $sig eq $good_sig;
     }
 
-    my $final_url;
-    my $sem_info = $self->_find_semantic_info($real_ident, \$final_url);
+    my $claimed_identity = $self->claimed_identity($real_ident);
+    return $self->_fail("no_identity_server") unless $claimed_identity;
+
+    my $final_url = $claimed_identity->claimed_url;
     return $self->_fail("unexpected_url_redirect") unless $final_url eq $real_ident;
 
-    my $server = $sem_info->{"openid.server"} or
-        return $self->_fail("no_identity_server");
+    my $server = $claimed_identity->identity_server;
+
+    # Protocol version must match
+    return $self->_fail("protocol_version_incorrect") unless $claimed_identity->protocol_version == $self->_message_version;
+
+    # FIXME: Should save the semantic info inside claimed_identity
+    #  to avoid refetching it here.
+    my $sem_info = $self->_find_semantic_info($real_ident, \$final_url);
 
     # if openid.delegate was used, check that it was done correctly
     if ($a_ident ne $real_ident) {
-        return $self->_fail("bogus_delegation") unless $sem_info->{"openid.delegate"} eq $a_ident;
+        my $delegate = $claimed_identity->delegated_url;
+        return $self->_fail("bogus_delegation") unless $delegate eq $a_ident;
+        $self->_debug("verified_identity: verified delegate $delegate for $real_ident");
     }
 
     my $assoc_handle = $self->message("assoc_handle");
@@ -941,7 +953,7 @@ Your secret may not exceed 255 characters.
 
 Get or set the minimum OpenID protocol version supported. Currently
 the only useful value you can set here is 2, which will cause
-1.1 identifiers to fail discovery with the error C<protocol_version_insufficient>.
+1.1 identifiers to fail discovery with the error C<protocol_version_incorrect>.
 
 In most cases you'll want to allow both 1.1 and 2.0 identifiers,
 which is the default. If you want, you can set this property to 1
