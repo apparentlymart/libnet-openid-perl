@@ -530,7 +530,17 @@ sub verified_identity {
     return $self->_fail("no_identity_server") unless $claimed_identity;
 
     my $final_url = $claimed_identity->claimed_url;
-    return $self->_fail("unexpected_url_redirect") unless $final_url eq $real_ident;
+
+    # OpenID 2.0 wants us to exclude the fragment part of the URL when doing equality checks
+    my $a_ident_nofragment = $a_ident;
+    my $real_ident_nofragment = $real_ident;
+    my $final_url_nofragment = $final_url;
+    if ($self->_message_version >= 2) {
+        $a_ident_nofragment =~ s/\#.*$//x;
+        $real_ident_nofragment =~ s/\#.*$//x;
+        $final_url_nofragment =~ s/\#.*$//x;
+    }
+    return $self->_fail("unexpected_url_redirect") unless $final_url_nofragment eq $real_ident_nofragment;
 
     my $server = $claimed_identity->identity_server;
 
@@ -538,10 +548,12 @@ sub verified_identity {
     return $self->_fail("protocol_version_incorrect") unless $claimed_identity->protocol_version == $self->_message_version;
 
     # if openid.delegate was used, check that it was done correctly
-    if ($a_ident ne $real_ident) {
+    if ($a_ident_nofragment ne $real_ident_nofragment) {
         my $delegate = $claimed_identity->delegated_url;
-        return $self->_fail("bogus_delegation") unless $delegate eq $a_ident;
-        $self->_debug("verified_identity: verified delegate $delegate for $real_ident");
+        my $a_ident_nofragment = $a_ident;
+        $a_ident_nofragment =~ s/\#.*$//;
+        $self->_debug("verified_identity: verifying delegate $delegate for $a_ident_nofragment");
+        return $self->_fail("bogus_delegation") unless $delegate eq $a_ident_nofragment;
     }
 
     my $assoc_handle = $self->message("assoc_handle");
