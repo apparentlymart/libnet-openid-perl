@@ -529,6 +529,13 @@ sub verified_identity {
     my $claimed_identity = $self->claimed_identity($real_ident);
     return $self->_fail("no_identity_server") unless $claimed_identity;
 
+    # NOTE: Currently we're expecting the "primary" OP -- that is, the one that "wins"
+    # when we do discovery -- to be the one that sends the response. Since we currently
+    # don't support falling back to other providers in the XRD case, this should always
+    # be a valid assumption unless this assersion request is unsolicited.
+    # We'll also fail if the identifier's provider priorities are twiddled between
+    # request and response, but that's unlikely enough that we're just going to ignore it.
+
     my $final_url = $claimed_identity->claimed_url;
 
     # OpenID 2.0 wants us to exclude the fragment part of the URL when doing equality checks
