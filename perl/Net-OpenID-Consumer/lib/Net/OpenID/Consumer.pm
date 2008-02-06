@@ -360,6 +360,40 @@ sub _find_openid_server {
     $sem_info->{"openid.server"};
 }
 
+sub is_server_response {
+    my Net::OpenID::Consumer $self = shift;
+    return $self->_message_mode ? 1 : 0;
+}
+
+sub handle_server_response {
+    my Net::OpenID::Consumer $self = shift;
+    my %callbacks_in = @_;
+    my %callbacks = ();
+
+    foreach my $cb (qw(not_openid setup_required cancelled verified error)) {
+        $callbacks{$cb} = delete($callbacks_in{$cb}) || sub { Carp::croak("No ".$cb." callback") };
+    }
+    Carp::croak("Unknown callbacks ".join(',', keys %callbacks)) if %callbacks_in;
+
+    unless ($self->is_server_response) {
+        return $callbacks{not_openid}->();
+    }
+
+    if (my $setup_url = $self->user_setup_url) {
+        return $callbacks{setup_required}->($setup_url);
+    }
+    elsif ($self->user_cancel) {
+        return $callbacks{cancelled}->();
+    }
+    elsif (my $vident = $self->verified_identity) {
+        return $callbacks{verified}->($vident);
+    }
+    else {
+        return $callbacks{error}->($self->errcode, $self->errtext);
+    }
+
+}
+
 # returns Net::OpenID::ClaimedIdentity
 sub claimed_identity {
     my Net::OpenID::Consumer $self = shift;
@@ -881,8 +915,31 @@ Net::OpenID::Consumer - library for consumers of OpenID identities
   );
 
   # so you send the user off there, and then they come back to
-  # openid-check.app, then you see what the identity server said;
+  # openid-check.app, then you see what the identity server said.
 
+  # Either use callback-based API (recommended)...
+  $csr->handle_server_response(
+      not_openid => sub {
+          die "Not an OpenID message";
+      },
+      setup_required => sub {
+          my $setup_url = shift;
+          # Redirect the user to $setup_url
+      },
+      cancelled => sub {
+          # Do something appropriate when the user hits "cancel" at the OP
+      },
+      verified => sub {
+          my $vident = shift;
+          # Do something with the VerifiedIdentity object $vident
+      },
+      error => sub {
+          my $err = shift;
+          die($err);
+      },
+  );
+
+  # ... or handle the various cases yourself
   if (my $setup_url = $csr->user_setup_url) {
        # redirect/link/popup user to $setup_url
   } elsif ($csr->user_cancel) {
@@ -1056,6 +1113,33 @@ codes (from $csr->B<errcode>) to decide what to present to the user:
 
 =back
 
+=item $csr->B<handle_server_response>( %callbacks );
+
+When a request comes in that contains a response from an OpenID provider,
+figure out what it means and dispatch to an appropriate callback to handle
+the request. This is the callback-based alternative to explicitly calling
+the methods below in the correct sequence, and is recommended unless you
+need to do something strange.
+
+Anything you return from the selected callback function will be returned
+by this method verbatim. This is useful if the caller needs to return
+something different in each case.
+
+The available callbacks are:
+
+=over 8
+
+=item B<not_openid> - the request isn't an OpenID response after all.
+
+=item B<setup_required>($setup_url) - the provider needs to present some UI to the user before it can respond. Send the user to the given URL by some means.
+
+=item B<cancelled> - the user cancelled the authentication request from the provider's UI
+
+=item B<verified>($verified_identity) - the user's identity has been successfully verified. A L<Net::OpenID::VerifiedIdentity> object is passed in.
+
+=item B<error>($errcode, $errmsg) - an error has occured. An error code and message are provided.
+
+=back
 
 =item $csr->B<user_setup_url>( [ %opts ] )
 
