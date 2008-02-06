@@ -10,6 +10,7 @@ use fields (
     'delegate',         # the delegated URL actually asserted by the server
     'protocol_version', # The version of the OpenID Authentication Protocol that is used
     'semantic_info',    # Stuff that we've discovered in the identifier page's metadata
+    'extension_args',   # Extension arguments that the caller wants to add to the request
 );
 
 sub new {
@@ -27,6 +28,8 @@ sub new {
 
     # lowercase the scheme and hostname
     $self->{'identity'} =~ s!^(https?://.+?)(/(?:.*))?$!lc($1) . $2!ie;
+
+    $self->{extension_args} = {};
 
     Carp::croak("unknown options: " . join(", ", keys %opts)) if %opts;
     return $self;
@@ -65,6 +68,17 @@ sub semantic_info {
     # Don't return anything if the URL has changed. Something bad may be happening.
     $info = {} if $final_url ne $self->claimed_url;
     return $self->{semantic_info} = $info;
+}
+
+sub set_extension_args {
+    my Net::OpenID::ClaimedIdentity $self = shift;
+    my $ext_uri = shift;
+    my $args = shift;
+    Carp::croak("Too many parameters") if @_;
+    Carp::croak("No extension URI given") unless $ext_uri;
+    Carp::croak("Expecting hashref of args") if defined($args) && ref $args ne 'HASH';
+
+    $self->{extension_args}{$ext_uri} = $args;
 }
 
 sub check_url {
@@ -150,6 +164,29 @@ sub check_url {
             ) : ()),
         );
     }
+
+    # Finally we add in the extension arguments, if any
+    my %ext_url_args = ();
+    my $ext_idx = 1;
+    foreach my $ext_uri (keys %{$self->{extension_args}}) {
+        my $ext_alias;
+
+        if ($self->protocol_version >= 2) {
+            $ext_alias = 'e'.($ext_idx++);
+            $ext_url_args{'openid.ns.'.$ext_alias} = $ext_uri;
+        }
+        else {
+            # For OpenID 1.1 only the "SREG" extension is allowed,
+            # and it must use the "openid.sreg." prefix.
+            next unless $ext_uri eq "http://openid.net/extensions/sreg/1.1";
+            $ext_alias = "sreg";
+        }
+
+        foreach my $k (keys %{$self->{extension_args}{$ext_uri}}) {
+            $ext_url_args{'openid.'.$ext_alias.'.'.$k} = $self->{extension_args}{$ext_uri}{$k};
+        }
+    }
+    OpenID::util::push_url_arg(\$curl, %ext_url_args) if %ext_url_args;
 
     $self->{consumer}->_debug("check_url for (del=$self->{delegate}, id=$self->{identity}) = $curl");
     return $curl;
