@@ -433,20 +433,23 @@ sub claimed_identity {
             OpenID::util::version_2_xrds_directed_service_url(),
             OpenID::util::version_1_xrds_service_url(),
         );
+        my $version2 = OpenID::util::version_2_xrds_service_url();
+        my $version1 = OpenID::util::version_1_xrds_service_url();
+        my $version2_directed = OpenID::util::version_2_xrds_directed_service_url();
         foreach my $service (@services) {
-            if ($service->Type eq OpenID::util::version_2_xrds_service_url()) {
+            if (grep(/^${version2}$/, $service->Type)) {
                 # We have an OpenID 2.0 end-user identifier
                 $id_server = $service->URI;
                 $delegate = $service->extra_field("LocalID");
                 $version = 2;
             }
-            elsif ($service->Type eq OpenID::util::version_1_xrds_service_url()) {
+            elsif (grep(/^${version1}$/, $service->Type)) {
                 # We have an OpenID 1.1 end-user identifier
                 $id_server = $service->URI;
                 $delegate = $service->extra_field("Delegate", "http://openid.net/xmlns/1.0");
                 $version = 1;
             }
-            elsif ($service->Type eq OpenID::util::version_2_xrds_directed_service_url()) {
+            elsif (grep(/^${version2_directed}$/, $service->Type)) {
                 # We have an OpenID 2.0 OP identifier (i.e. we're doing directed identity)
                 $id_server = $service->URI;
                 $version = 2;
@@ -594,7 +597,10 @@ sub verified_identity {
         my $a_ident_nofragment = $a_ident;
         $a_ident_nofragment =~ s/\#.*$//;
         $self->_debug("verified_identity: verifying delegate $delegate for $a_ident_nofragment");
-        return $self->_fail("bogus_delegation") unless $delegate eq $a_ident_nofragment;
+        #return $self->_fail("bogus_delegation") unless $delegate eq $a_ident_nofragment;
+        if ($claimed_identity->protocol_version < 2) {
+            return $self->_fail("bogus_delegation") unless $delegate eq $a_ident;
+        }
     }
 
     my $assoc_handle = $self->message("assoc_handle");
