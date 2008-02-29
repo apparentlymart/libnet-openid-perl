@@ -56,6 +56,11 @@ sub new {
     return $self;
 }
 
+sub disable_version_1 {
+    my $self = shift;
+    $self->{minimum_version} = 2.0;
+}
+
 sub cache           { &_getset; }
 sub consumer_secret { &_getset; }
 sub required_root   { &_getset; }
