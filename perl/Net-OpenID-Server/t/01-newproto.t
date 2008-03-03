@@ -26,6 +26,7 @@ my $nos = Net::OpenID::Server->new(
                                    post_args => \%post,
                                    server_secret => "o3kjn3nf9832hf32nfo32nfdo32nro32n29332",
                                    setup_url => "http://server.com/setup.app",
+                                   endpoint_url => "http://server.com/server.app",
                                    compat => 1,
                                    );
 ok($nos);
@@ -42,6 +43,9 @@ login_setup_fail();
 login_setup_fail2();
 
 login_bogus_handle();
+
+login20_success();
+login20_select_success();
 
 sub assoc_clear {
     %get = ();
@@ -234,7 +238,42 @@ sub login_setup_fail2 {
     ok($content =~ m!^http://.+setup\.app\?!);
 }
 
+sub login20_success {
+    $nos->is_identity(sub { 1; });
+    $nos->is_trusted(sub { 1; });
+    $nos->get_user(sub { "brad"; });
+    %post = ();
+    %get = (
+            "openid.ns"   => 'http://specs.openid.net/auth/2.0',
+            "openid.mode" => "checkid_setup",
+            "openid.identity" => "http://bradfitz.com/",
+            "openid.return_to" => "http://trust.root/return/",
+            "openid.realm" => "http://trust.root/",
+            "openid.assoc_handle" => $ahandle,
+            );
+    ($ctype, $content) = $nos->handle_page();
+    is($ctype, "redirect");
+}
 
+sub login20_select_success {
+    $nos->is_identity(sub { 1; });
+    $nos->is_trusted(sub { 1; });
+    $nos->get_user(sub { "brad"; });
+    $nos->get_identity(sub { "http://bradfitz.com/user/brad"; });
+    %post = ();
+    %get = (
+            "openid.ns"   => 'http://specs.openid.net/auth/2.0',
+            "openid.mode" => "checkid_setup",
+            "openid.identity" => "http://specs.openid.net/auth/2.0/identifier_select",
+            "openid.claimed_id" => "http://specs.openid.net/auth/2.0/identifier_select",
+            "openid.return_to" => "http://trust.root/return/",
+            "openid.realm" => "http://trust.root/",
+            "openid.assoc_handle" => $ahandle,
+            );
+    ($ctype, $content) = $nos->handle_page();
+    is($ctype, "redirect");
+    ok($content =~ m!http://bradfitz.com/user/brad! );
+}
 
 sub good_date {
     return $_[0] =~ /^(\d{4,4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)Z$/;
