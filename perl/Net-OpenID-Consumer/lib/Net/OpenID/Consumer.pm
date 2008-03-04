@@ -56,6 +56,11 @@ sub new {
     return $self;
 }
 
+# NOTE: This method is here only to support the openid-test library.
+# Don't call it from anywhere else, or you'll break when it gets 
+# removed. Instead, set the minimum_version property.
+# FIXME: Can we just make openid-test set minimum_version and get
+# rid of this?
 sub disable_version_1 {
     my $self = shift;
     $self->{minimum_version} = 2.0;
