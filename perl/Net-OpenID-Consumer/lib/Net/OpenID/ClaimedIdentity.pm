@@ -252,6 +252,33 @@ claimed identity is valid, and sign a message saying so.
 If the claimed URL is using delegation, this returns the delegated identity that will
 actually be sent to the identity server.
 
+=item $version = $cident->B<protocol_version>
+
+Determines whether this identifier is to be verified by OpenID 1.1
+or by OpenID 2.0. Returns C<1> or C<2> respectively. This will
+affect the way the C<check_url> is constructed.
+
+=item $cident->B<set_extension_args>($ns_uri, $args)
+
+If called before you access C<check_url>, the arguments given in the hashref
+$args will be added to the request in the given extension namespace.
+For example, to use the Simple Registration (SREG) extension:
+
+    $cident->set_extension_args(
+        'http://openid.net/extensions/sreg/1.1',
+        {
+            required => 'email',
+            optional => 'fullname,nickname',
+            policy_url => 'http://example.com/privacypolicy.html',
+        },
+    );
+
+Note that when making an OpenID 1.1 request, only the Simple Registration
+extension is supported. There was no general extension mechanism defined
+in OpenID 1.1, so SREG (with the namespace URI as in the example above)
+is supported as a special case. All other extension namespaces will
+be silently ignored when making a 1.1 request.
+
 =item $url = $cident->B<check_url>( %opts )
 
 Makes the URL that you have to somehow send the user to in order to
@@ -296,12 +323,6 @@ delayed_return because the remote site can't usefully take control of
 a 1x1 pixel hidden IFRAME, so you'll need to get the user_setup_url
 and present it to the user somehow.
 
-=item C<protocol_version>
-
-Determines whether this identifier is to be verified by OpenID 1.1
-or by OpenID 2.0. Returns C<1> or C<2> respectively. This will
-affect the way the C<check_url> is constructed.
-
 =back
 
 =back
@@ -318,5 +339,5 @@ L<Net::OpenID::VerifiedIdentity>
 
 L<Net::OpenID::Server>
 
-Website:  L<http://www.danga.com/openid/>
+Website:  L<http://www.openid.net/>
 
