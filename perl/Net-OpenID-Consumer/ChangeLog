@@ -1,3 +1,8 @@
+        * add the set_extension_args method to ClaimedIdentity and the
+          extension_fields and signed_extension_fields methods to
+          VerifiedIdentity, which together form a higher-level API
+          for using protocol extensions such as SREG and PAPE.
+
 	* add support for OpenID 2.0-style messages from providers
 
 	* use our own simplified fork of Net::Yadis::Discovery to avoid
