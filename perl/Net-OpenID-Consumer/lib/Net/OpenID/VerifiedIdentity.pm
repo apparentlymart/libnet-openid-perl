@@ -13,6 +13,7 @@ use fields (
     'consumer',  # The Net::OpenID::Consumer module which created us
 
     'signed_fields' ,  # hashref of key->value of things that were signed.  without "openid." prefix
+    'signed_message',  # the signed fields as an IndirectMessage object. Created when needed.
 );
 use URI;
 
@@ -80,6 +81,52 @@ sub foafmaker     { &_getset_sem; }
 sub declared_foaf   { &_dec_semurl; }
 sub declared_rss    { &_dec_semurl; }
 sub declared_atom   { &_dec_semurl; }
+
+sub extension_fields {
+    my ($self, $ns_uri) = @_;
+    return $self->_extension_fields($ns_uri, $self->{consumer}->message);
+}
+
+sub signed_extension_fields {
+    my ($self, $ns_uri) = @_;
+
+    return $self->_extension_fields($ns_uri, $self->signed_message);
+}
+
+sub _extension_fields {
+    my ($self, $ns_uri, $args) = @_;
+
+    return $args->get_ext($ns_uri);
+}
+
+sub signed_message {
+    my ($self) = @_;
+
+    return $self->{signed_message} if $self->{signed_message};
+
+    # This is maybe a bit hacky.
+    # We need to synthesize an IndirectMessage object
+    # representing the signed fields, which means
+    # that we need to fake up the mandatory message
+    # arguments that probably weren't signed.
+
+    my %args = map { 'openid.'.$_ => $self->{signed_fields}{$_} } keys %{$self->{signed_fields}};
+
+    my $real_message = $self->{consumer}->message;
+    if ($real_message->protocol_version == 1) {
+        # OpenID 1.1 just needs a mode.
+        $args{'openid.mode'} = 'id_res';
+    }
+    else {
+        # OpenID 2.2 needs the namespace URI as well
+        $args{'openid.ns'} = 'http://specs.openid.net/auth/2.0';
+        $args{'openid.mode'} = 'id_res';
+    }
+
+    my $message = Net::OpenID::IndirectMessage->new(\%args);
+
+    return $self->{signed_message} = $message;
+}
 
 sub _getset {
     my $self = shift;
@@ -262,7 +309,38 @@ the tilde form, or "/users/USERNAME" or "/members/USERNAME".  If the
 path component is empty or just "/", then the display form is just the
 hostname, so "http://myblog.com/" is just "myblog.com".
 
-Suggestions for improving this function are welcome!
+Suggestions for improving this function are welcome, but you'll probably
+get more satisfying results if you make use of the data returned by
+the Simple Registration (SREG) extension, which allows the user to
+choose a preferred nickname to use on your site.
+
+=item $vident->B<extension_fields>($ns_uri)
+
+Return the fields from the given extension namespace, if any, that
+were included in the assertion request. The fields are returned in
+a hashref.
+
+In most cases you'll probably want to use B<signed_extension_fields> instead,
+to avoid attacks where a man-in-the-middle alters the extension fields in transit.
+
+Note that for OpenID 1.1 transactions only Simple Registration (SREG) 1.1
+is supported.
+
+=item $vident->B<signed_extension_fields>($ns_uri)
+
+The same as B<extension_fields> except that only fields that were signed
+as part of the assertion are included in the returned hashref. For example,
+if you included a Simple Registration request in your initial message,
+you might fetch the results (if any) like this:
+
+    $sreg = $vident->signed_extension_fields(
+        'http://openid.net/extensions/sreg/1.1',
+    );
+
+An important gotcha to bear in mind is that for OpenID 2.0 responses
+no extension fields can be considered signed unless the corresponding
+extension namespace declaration is also signed. If that is not the case,
+this method will behave as if no extension fields for that URI were signed.
 
 =item $vident->B<rss>
 
