@@ -1,3 +1,6 @@
+        * Support the 1.1 and 1.0 namespace values required by
+          Auth 2.0 section 4.1.2.
+
         * Deal with cases where Net::OpenID::Yadis returns arrayref
           or hashref for Service->URI, including a basic support for
           the priority attribute. Based on a patch from

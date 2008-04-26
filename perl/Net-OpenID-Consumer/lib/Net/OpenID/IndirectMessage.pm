@@ -57,6 +57,15 @@ sub new {
 
     # Is this an OpenID 2.0 message?
     my $ns = $self->get('ns');
+
+
+    # The 2.0 spec section 4.1.2 requires that we support these namespace values
+    # but act like it's a normal 1.1 request.
+    # We do this by just pretending that ns wasn't set at all.
+    if ($ns eq 'http://openid.net/signon/1.1' || $ns eq 'http://openid.net/signon/1.0') {
+        $ns = undef;
+    }
+
     if (defined($ns) && $ns eq OpenID::util::version_2_namespace()) {
         $self->{protocol_version} = 2;
     }
