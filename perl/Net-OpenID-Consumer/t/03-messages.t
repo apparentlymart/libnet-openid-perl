@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use strict;
-use Test::More tests => 39;
+use Test::More tests => 40;
 use Net::OpenID::IndirectMessage;
 
 my $openid2_ns = 'http://specs.openid.net/auth/2.0';
