@@ -69,7 +69,10 @@ sub usable {
 # goes into dumb consumer mode.  will do a POST and allocate
 # a new assoc_handle if none is found, or has expired
 sub server_assoc {
-    my ($csr, $server, $force_reassociate) = @_;
+    my ($csr, $server, $force_reassociate, %opts) = @_;
+
+    my $protocol_version = delete $opts{protocol_version} || 1;
+    Carp::croak("unknown options: " . join(", ", keys %opts)) if %opts;
 
     # closure to return undef (dumb consumer mode) and log why
     my $dumb = sub {
@@ -101,6 +104,10 @@ sub server_assoc {
                 "openid.session_type" => "DH-SHA1",
                 "openid.dh_consumer_public" => OpenID::util::bi2arg($dh->pub_key),
                 );
+
+    if ($protocol_version == 2) {
+        $post{"openid.ns"} = OpenID::util::version_2_namespace();
+    }
 
     my $req = HTTP::Request->new(POST => $server);
     $req->header("Content-Type" => "application/x-www-form-urlencoded");

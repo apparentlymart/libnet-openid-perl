@@ -105,7 +105,9 @@ sub check_url {
     if ($use_assoc_handle) {
         $assoc = Net::OpenID::Association::handle_assoc($csr, $ident_server, $use_assoc_handle);
     } else {
-        $assoc = Net::OpenID::Association::server_assoc($csr, $ident_server, $force_reassociate);
+        $assoc = Net::OpenID::Association::server_assoc($csr, $ident_server, $force_reassociate, (
+            protocol_version => $self->protocol_version,
+        ));
     }
 
     # for the openid-test project: (doing interop testing)

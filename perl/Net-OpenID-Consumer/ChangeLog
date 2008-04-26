@@ -1,3 +1,6 @@
+        * when dealing with a 2.0 server, send 2.0-shaped association
+          requests.
+
         * add the set_extension_args method to ClaimedIdentity and the
           extension_fields and signed_extension_fields methods to
           VerifiedIdentity, which together form a higher-level API
