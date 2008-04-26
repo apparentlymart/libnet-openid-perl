@@ -974,7 +974,7 @@ This is the Perl API for (the consumer half of) OpenID, a distributed
 identity system based on proving you own a URL, which is then your
 identity.  More information is available at:
 
-  http://www.danga.com/openid/
+  http://openid.net/
 
 =head1 CONSTRUCTOR
 
@@ -1055,7 +1055,7 @@ Obtain a value from the message contained in the request arguments
 with the given key. This can only be used to obtain core arguments,
 not extension arguments.
 
-Call this method with out a C<$key> argument to get a L<Net::OpenID::IndirectMessage>
+Call this method without a C<$key> argument to get a L<Net::OpenID::IndirectMessage>
 object representing the message.
 
 =item $csr->B<args>($ref)
@@ -1243,7 +1243,7 @@ This is free software. IT COMES WITHOUT WARRANTY OF ANY KIND.
 
 =head1 SEE ALSO
 
-OpenID website:  http://www.danga.com/openid/
+OpenID website: http://openid.net/
 
 L<Net::OpenID::ClaimedIdentity> -- part of this module
 
@@ -1254,3 +1254,8 @@ L<Net::OpenID::Server> -- another module, for acting like an OpenID server
 =head1 AUTHORS
 
 Brad Fitzpatrick <brad@danga.com>
+
+Tatsuhiko Miyagawa <miyagawa@sixapart.com>
+
+Martin Atkins <mart@degeneration.co.uk>
+
