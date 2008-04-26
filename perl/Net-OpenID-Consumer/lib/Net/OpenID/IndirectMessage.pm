@@ -43,6 +43,7 @@ sub new {
         $enumer = sub { return (); };
     }
     else {
+        $what = 'undef' if !defined $what;
         Carp::croak("Unknown parameter type ($what)");
     }
     $self->{getter} = $getter;
@@ -56,12 +57,12 @@ sub new {
 
     # Is this an OpenID 2.0 message?
     my $ns = $self->get('ns');
-    if ($ns eq OpenID::util::version_2_namespace()) {
+    if (defined($ns) && $ns eq OpenID::util::version_2_namespace()) {
         $self->{protocol_version} = 2;
     }
     elsif (! defined($ns)) {
         # No namespace at all means a 1.1 message
-        if ($self->{minimum_version} <= 1) {
+        if (($self->{minimum_version}||0) <= 1) {
             $self->{protocol_version} = 1;
         }
         else {
