@@ -427,6 +427,7 @@ sub claimed_identity {
     my $delegate;
     my $version;
     my $sem_info = undef;
+    my $discovery_mechanism;
 
     # TODO: Support XRI too?
 
@@ -446,27 +447,43 @@ sub claimed_identity {
         my $version2 = OpenID::util::version_2_xrds_service_url();
         my $version1 = OpenID::util::version_1_xrds_service_url();
         my $version2_directed = OpenID::util::version_2_xrds_directed_service_url();
+
         foreach my $service (@services) {
+            my $service_uri = $service->URI;
+
+            # Service->URI seems to return all sorts of bizarre things, so let's
+            # normalize it to always be a string.
+            if (ref($service_uri) eq 'ARRAY') {
+                my @sorted_id_servers = sort { $b->{priority} <=> $a->{priority} } @$service_uri;
+                $service_uri = $sorted_id_servers[0];
+            }
+            if (ref($service_uri) eq 'HASH') {
+                $service_uri = $service_uri->{content};
+            }
+
             if (grep(/^${version2}$/, $service->Type)) {
                 # We have an OpenID 2.0 end-user identifier
-                $id_server = $service->URI;
+                $id_server = $service_uri;
                 $delegate = $service->extra_field("LocalID");
                 $version = 2;
+                $discovery_mechanism = "Yadis";
             }
             elsif (grep(/^${version1}$/, $service->Type)) {
                 # We have an OpenID 1.1 end-user identifier
-                $id_server = $service->URI;
+                $id_server = $service_uri;
                 $delegate = $service->extra_field("Delegate", "http://openid.net/xmlns/1.0");
                 $version = 1;
+                $discovery_mechanism = "Yadis";
             }
             elsif (grep(/^${version2_directed}$/, $service->Type)) {
                 # We have an OpenID 2.0 OP identifier (i.e. we're doing directed identity)
-                $id_server = $service->URI;
+                $id_server = $service_uri;
                 $version = 2;
                 # In this case, the user's claimed identifier is a magic value
                 # and the actual identifier will be determined by the provider.
                 $final_url = OpenID::util::version_2_identifier_select_url();
                 $delegate = OpenID::util::version_2_identifier_select_url();
+                $discovery_mechanism = "Yadis";
             }
         }
     }
@@ -479,16 +496,21 @@ sub claimed_identity {
             $id_server = $sem_info->{"openid2.provider"};
             $delegate = $sem_info->{"openid2.local_id"};
             $version = 2;
+            $discovery_mechanism = "HTML";
         }
         elsif ($sem_info->{"openid.server"}) {
             $id_server = $sem_info->{"openid.server"};
             $delegate = $sem_info->{"openid.delegate"};
             $version = 1;
+            $discovery_mechanism = "HTML";
         }
     }
 
-    return $self->_fail("protocol_version_incorrect") unless $version >= $self->minimum_version;
     return $self->_fail("no_identity_server") unless $id_server;
+    return $self->_fail("protocol_version_incorrect") unless $version >= $self->minimum_version;
+
+    $self->_debug("Discovered version $version endpoint at $id_server via $discovery_mechanism");
+    $self->_debug("Delegate is $delegate") if $delegate;
 
     return Net::OpenID::ClaimedIdentity->new(
         identity         => $final_url,

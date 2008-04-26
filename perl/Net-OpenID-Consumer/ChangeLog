@@ -1,3 +1,8 @@
+        * Deal with cases where Net::OpenID::Yadis returns arrayref
+          or hashref for Service->URI, including a basic support for
+          the priority attribute. Based on a patch from
+          Fumiaki Yoshimatsu <fyoshimatsu@sixapart.com>.
+
         * when dealing with a 2.0 server, send 2.0-shaped association
           requests.
 
