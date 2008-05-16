@@ -19,19 +19,31 @@ sub new {
     my $getter;
     my $enumer;
     if (ref $what eq "HASH") {
+        # In this case it's the caller's responsibility to determine
+        # whether the method is GET or POST.
         $getter = sub { $what->{$_[0]}; };
         $enumer = sub { keys(%$what); };
     }
     elsif (UNIVERSAL::isa($what, "CGI")) {
+        # CGI automatically does what we need when method is POST
         $getter = sub { scalar $what->param($_[0]); };
         $enumer = sub { $what->param; };
     }
     elsif (ref $what eq "Apache") {
-        my %get = $what->args;
+        my %get;
+        if ($what->method eq 'POST') {
+            %get = $what->content;
+        }
+        else {
+            %get = $what->args;
+        }
         $getter = sub { $get{$_[0]}; };
         $enumer = sub { keys(%get); };
     }
     elsif (ref $what eq "Apache::Request") {
+        # Apache::Request includes the POST and GET arguments in ->param
+        # when doing a POST request, which is close enough to what
+        # the spec requires.
         $getter = sub { scalar $what->param($_[0]); };
         $enumer = sub { $what->param; };
     }
@@ -206,6 +218,11 @@ This class can operate on a normal hashref, a L<CGI> object, an L<Apache>
 object, an L<Apache::Request> object or an arbitrary C<CODE> ref that takes
 a key name as its first parameter and returns a value. However,
 if you use a coderef then extension arguments are not supported.
+
+If you pass in a hashref or a coderef it is your responsibility as the caller
+to check the HTTP request method and pass in the correct set of arguments. If
+you use an Apache, Apache::Request or CGI object then this module will do
+the right thing automatically.
 
 =head1 SYNOPSIS
 
