@@ -108,28 +108,16 @@ sub args {
     my Net::OpenID::Consumer $self = shift;
 
     if (my $what = shift) {
-        Carp::croak("Too many parameters") if @_;
-        my $getter;
-        if (! ref $what){
-            Carp::croak("No args defined") unless $self->{args};
-            return $self->{args}->($what);
-        } elsif (ref $what eq "HASH") {
-            $getter = sub { $what->{$_[0]}; };
-        } elsif (UNIVERSAL::isa($what, "CGI")) {
-            $getter = sub { scalar $what->param($_[0]); };
-        } elsif (ref $what eq "Apache") {
-            my %get = $what->args;
-            $getter = sub { $get{$_[0]}; };
-        } elsif (ref $what eq "Apache::Request") {
-            $getter = sub { scalar $what->param($_[0]); };
-        } elsif (ref $what eq "CODE") {
-            $getter = $what;
-        } else {
-            Carp::croak("Unknown parameter type ($what)");
+        unless (ref $what) {
+            return $self->{args} ? $self->{args}->($what) : Carp::croak("No args defined");
         }
-        if ($getter) {
-            $self->{args} = $getter;
-            $self->{message} = Net::OpenID::IndirectMessage->new($what, minimum_version => $self->minimum_version);
+        else {
+            Carp::croak("Too many parameters") if @_;
+            my $message = Net::OpenID::IndirectMessage->new($what, (
+                minimum_version => $self->minimum_version,
+            ));
+            $self->{message} = $message;
+            $self->{args} = $message ? $message->getter : sub { undef };
         }
     }
     $self->{args};
@@ -1095,6 +1083,10 @@ $csr->args( $reference )
 Where $reference is either a HASH ref, CODE ref, Apache $r,
 Apache::Request $apreq, or CGI.pm $cgi.  If a CODE ref, the subref
 must return the value given one argument (the parameter to retrieve)
+
+If you pass in an Apache $r object, you must not have already called
+$r->content as the consumer module will want to get the request
+arguments out of here in the case of a POST request.
 
 2. Get a paramater:
 

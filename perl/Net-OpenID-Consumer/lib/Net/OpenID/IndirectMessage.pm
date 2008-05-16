@@ -115,6 +115,19 @@ sub get {
     return $self->{getter}->("openid.$key");
 }
 
+sub raw_get {
+    my $self = shift;
+    my $key = shift or Carp::croak("No argument name supplied to raw_get method");
+
+    return $self->{getter}->($key);
+}
+
+sub getter {
+    my $self = shift;
+
+    return $self->{getter};
+}
+
 sub get_ext {
     my $self = shift;
     my $namespace = shift or Carp::croak("No namespace URI supplied to get_ext method");
