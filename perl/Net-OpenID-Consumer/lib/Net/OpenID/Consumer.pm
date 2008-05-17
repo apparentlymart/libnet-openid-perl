@@ -617,10 +617,7 @@ sub verified_identity {
         my $a_ident_nofragment = $a_ident;
         $a_ident_nofragment =~ s/\#.*$//;
         $self->_debug("verified_identity: verifying delegate $delegate for $a_ident_nofragment");
-        #return $self->_fail("bogus_delegation") unless $delegate eq $a_ident_nofragment;
-        if ($claimed_identity->protocol_version < 2) {
-            return $self->_fail("bogus_delegation") unless $delegate eq $a_ident;
-        }
+        return $self->_fail("bogus_delegation") unless $delegate eq $a_ident;
     }
 
     my $assoc_handle = $self->message("assoc_handle");
