@@ -1,3 +1,7 @@
+	* Support indirect messages encapsualated in POST requests
+	  when args are given as a CGI, Apache, or Apache::Request
+	  object.
+
         * Support the 1.1 and 1.0 namespace values required by
           Auth 2.0 section 4.1.2.
 
