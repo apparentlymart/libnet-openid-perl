@@ -1,6 +1,12 @@
-	* Support indirect messages encapsualated in POST requests
-	  when args are given as a CGI, Apache, or Apache::Request
-	  object.
+        * Refactor the discovery code a little so that the whole list
+          of valid endpoints can optionally be returned. This is in
+          preparation for fixing the assertion verification code
+          so that providers other than the primary one are able to
+          make assertions.
+
+        * Support indirect messages encapsualated in POST requests
+          when args are given as a CGI, Apache, or Apache::Request
+          object.
 
         * Support the 1.1 and 1.0 namespace values required by
           Auth 2.0 section 4.1.2.
@@ -18,25 +24,25 @@
           VerifiedIdentity, which together form a higher-level API
           for using protocol extensions such as SREG and PAPE.
 
-	* add support for OpenID 2.0-style messages from providers
+        * add support for OpenID 2.0-style messages from providers
 
-	* use our own simplified fork of Net::Yadis::Discovery to avoid
-	  dependency on Module::Pluggable::Fast. Or on Net::Yadis::Discovery,
-	  for that matter.
+        * use our own simplified fork of Net::Yadis::Discovery to avoid
+          dependency on Module::Pluggable::Fast. Or on Net::Yadis::Discovery,
+          for that matter.
 
-	* add hooks for openid-test project. (bradfitz)
+        * add hooks for openid-test project. (bradfitz)
 
-	* add OpenID 2.0-compliant discovery and authentication request.
+        * add OpenID 2.0-compliant discovery and authentication request.
 
-	* add method on claimed identity object to get delgated URL
+        * add method on claimed identity object to get delgated URL
 
 0.14: (2007-08-03)
 
-	* allow CGI subclasses (like CGI::Fast) for args.  bug fix
-	  from Chris Kastorff <encryptio@gmail.com>.
+        * allow CGI subclasses (like CGI::Fast) for args.  bug fix
+          from Chris Kastorff <encryptio@gmail.com>.
 
 0.13:
-	* work-around bug in some openid servers that don't escape "+".
+        * work-around bug in some openid servers that don't escape "+".
 	  so treat a space as a +.  (from Thomas Sibley
 	  <trs@bestpractical.com>)
 
