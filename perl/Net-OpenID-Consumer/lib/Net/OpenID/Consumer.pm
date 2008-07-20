@@ -3,7 +3,7 @@
 use strict;
 use Carp ();
 use LWP::UserAgent;
-use URI::Fetch 0.02;
+use Storable;
 
 ############################################################################
 package Net::OpenID::Consumer;
@@ -12,7 +12,7 @@ use vars qw($VERSION);
 $VERSION = "0.14";
 
 use fields (
-    'cache',           # the Cache object sent to URI::Fetch
+    'cache',           # a Cache object to store HTTP responses and associations
     'ua',              # LWP::UserAgent instance to use
     'args',            # how to get at your args
     'message',         # args interpreted as an IndirectMessage, if possible
@@ -29,6 +29,7 @@ use Net::OpenID::VerifiedIdentity;
 use Net::OpenID::Association;
 use Net::OpenID::Yadis;
 use Net::OpenID::IndirectMessage;
+use Net::OpenID::URIFetch;
 
 use MIME::Base64 ();
 use Digest::SHA1 ();
@@ -203,28 +204,16 @@ sub errtext {
     $self->{last_errtext};
 }
 
-
 sub _get_url_contents {
     my Net::OpenID::Consumer $self = shift;
-    my  ($url, $final_url_ref, $hook) = @_;
+    my ($url, $final_url_ref, $hook) = @_;
     $final_url_ref ||= do { my $dummy; \$dummy; };
 
-    my $ures = URI::Fetch->fetch($url,
-                                 UserAgent        => $self->ua,
-                                 Cache            => $self->cache,
-                                 ContentAlterHook => $hook,
-                                 )
-        or return $self->_fail("url_fetch_error", "Error fetching URL: " . URI::Fetch->errstr);
+    my $res = Net::OpenID::URIFetch->fetch($url, $self, $hook);
 
-    # who actually uses HTTP gone response status?  uh, nobody.
-    if ($ures->status == URI::Fetch::URI_GONE()) {
-        return $self->_fail("url_gone", "URL is no longer available");
-    }
+    $$final_url_ref = $res->final_uri;
 
-    my $res = $ures->http_response;
-    $$final_url_ref = $res->request->uri->as_string;
-
-    return $ures->content;
+    return $res ? $res->content : undef;
 }
 
 sub _find_semantic_info {
@@ -430,7 +419,7 @@ sub _discover_acceptable_endpoints {
     # TODO: Support XRI too?
 
     # First we Yadis service discovery
-    my $yadis = Net::OpenID::Yadis->new(ua => $self->{ua});
+    my $yadis = Net::OpenID::Yadis->new(consumer => $self);
     if ($yadis->discover($url)) {
         # FIXME: Currently we don't ever do _find_semantic_info in the Yadis
         # code path, so an extra redundant HTTP request is done later
@@ -713,7 +702,6 @@ sub verified_identity {
         return $self->_fail("time_bad_sig") unless $sig eq $good_sig;
     }
 
-    my $claimed_identity = undef;
     my $last_error = undef;
 
     foreach my $endpoint (@$possible_endpoints) {
@@ -754,7 +742,6 @@ sub verified_identity {
 
         # if openid.delegate was used, check that it was done correctly
         if ($a_ident_nofragment ne $real_ident_nofragment) {
-            my $delegate = $claimed_identity->delegated_url;
             my $a_ident_nofragment = $a_ident;
             $a_ident_nofragment =~ s/\#.*$//;
             unless ($delegate eq $a_ident) {
