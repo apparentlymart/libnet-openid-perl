@@ -1,3 +1,8 @@
+        * Make the verified_identity bit accept assertions from any
+          declared endpoint, rather than only the primary one.
+          This implementation kinda sucks because it hits the identity
+          URL over and over doing discovery.
+
         * Refactor the discovery code a little so that the whole list
           of valid endpoints can optionally be returned. This is in
           preparation for fixing the assertion verification code
