@@ -3,7 +3,7 @@
 use strict;
 use Carp ();
 use LWP::UserAgent;
-use URI::Fetch 0.02;
+use Storable;
 
 ############################################################################
 package Net::OpenID::Consumer;
@@ -12,19 +12,24 @@ use vars qw($VERSION);
 $VERSION = "0.14";
 
 use fields (
-            'cache',           # the Cache object sent to URI::Fetch
-            'ua',              # LWP::UserAgent instance to use
-            'args',            # how to get at your args
-            'consumer_secret', # scalar/subref
-            'required_root',   # the default required_root value, or undef
-            'last_errcode',    # last error code we got
-            'last_errtext',    # last error code we got
-            'debug',           # debug flag or codeblock
-            );
+    'cache',           # a Cache object to store HTTP responses and associations
+    'ua',              # LWP::UserAgent instance to use
+    'args',            # how to get at your args
+    'message',         # args interpreted as an IndirectMessage, if possible
+    'consumer_secret', # scalar/subref
+    'required_root',   # the default required_root value, or undef
+    'last_errcode',    # last error code we got
+    'last_errtext',    # last error code we got
+    'debug',           # debug flag or codeblock
+    'minimum_version', # The minimum protocol version to support
+);
 
 use Net::OpenID::ClaimedIdentity;
 use Net::OpenID::VerifiedIdentity;
 use Net::OpenID::Association;
+use Net::OpenID::Yadis;
+use Net::OpenID::IndirectMessage;
+use Net::OpenID::URIFetch;
 
 use MIME::Base64 ();
 use Digest::SHA1 ();
@@ -37,11 +42,14 @@ sub new {
     $self = fields::new( $self ) unless ref $self;
     my %opts = @_;
 
+    $opts{minimum_version} ||= 1;
+
     $self->{ua}            = delete $opts{ua};
     $self->args            ( delete $opts{args}            );
     $self->cache           ( delete $opts{cache}           );
     $self->consumer_secret ( delete $opts{consumer_secret} );
     $self->required_root   ( delete $opts{required_root}   );
+    $self->minimum_version ( delete $opts{minimum_version} );
 
     $self->{debug} = delete $opts{debug};
 
@@ -49,9 +57,20 @@ sub new {
     return $self;
 }
 
+# NOTE: This method is here only to support the openid-test library.
+# Don't call it from anywhere else, or you'll break when it gets 
+# removed. Instead, set the minimum_version property.
+# FIXME: Can we just make openid-test set minimum_version and get
+# rid of this?
+sub disable_version_1 {
+    my $self = shift;
+    $self->{minimum_version} = 2.0;
+}
+
 sub cache           { &_getset; }
 sub consumer_secret { &_getset; }
 sub required_root   { &_getset; }
+sub minimum_version { &_getset; }
 
 sub _getset {
     my Net::OpenID::Consumer $self = shift;
@@ -90,30 +109,39 @@ sub args {
     my Net::OpenID::Consumer $self = shift;
 
     if (my $what = shift) {
-        Carp::croak("Too many parameters") if @_;
-        my $getter;
-        if (! ref $what){
-            Carp::croak("No args defined") unless $self->{args};
-            return $self->{args}->($what);
-        } elsif (ref $what eq "HASH") {
-            $getter = sub { $what->{$_[0]}; };
-        } elsif (UNIVERSAL::isa($what, "CGI")) {
-            $getter = sub { scalar $what->param($_[0]); };
-        } elsif (ref $what eq "Apache") {
-            my %get = $what->args;
-            $getter = sub { $get{$_[0]}; };
-        } elsif (ref $what eq "Apache::Request") {
-            $getter = sub { scalar $what->param($_[0]); };
-        } elsif (ref $what eq "CODE") {
-            $getter = $what;
-        } else {
-            Carp::croak("Unknown parameter type ($what)");
+        unless (ref $what) {
+            return $self->{args} ? $self->{args}->($what) : Carp::croak("No args defined");
         }
-        if ($getter) {
-            $self->{args} = $getter;
+        else {
+            Carp::croak("Too many parameters") if @_;
+            my $message = Net::OpenID::IndirectMessage->new($what, (
+                minimum_version => $self->minimum_version,
+            ));
+            $self->{message} = $message;
+            $self->{args} = $message ? $message->getter : sub { undef };
         }
     }
     $self->{args};
+}
+
+sub message {
+    my Net::OpenID::Consumer $self = shift;
+    if (my $key = shift) {
+        return $self->{message} ? $self->{message}->get($key) : undef;
+    }
+    else {
+        return $self->{message};
+    }
+}
+
+sub _message_mode {
+    my $message = $_[0]->message;
+    return $message ? $message->mode : undef;
+}
+
+sub _message_version {
+    my $message = $_[0]->message;
+    return $message ? $message->protocol_version : undef;
 }
 
 sub ua {
@@ -140,6 +168,10 @@ sub _fail {
         'bogus_url' => "Invalid URL.",
         'no_head_tag' => "URL provided doesn't seem to have a head tag.",
         'url_fetch_err' => "Error fetching the provided URL.",
+        'bad_mode' => "The openid.mode argument is not correct",
+        'protocol_version_incorrect' => "The provided URL uses the wrong protocol version",
+        'naive_verify_failed_return' => "Provider says signature is invalid",
+        'naive_verify_failed_network' => "Could not contact provider to verify signature",
     }->{$code};
 
     $self->{last_errcode} = $code;
@@ -172,28 +204,16 @@ sub errtext {
     $self->{last_errtext};
 }
 
-
 sub _get_url_contents {
     my Net::OpenID::Consumer $self = shift;
-    my  ($url, $final_url_ref, $hook) = @_;
+    my ($url, $final_url_ref, $hook) = @_;
     $final_url_ref ||= do { my $dummy; \$dummy; };
 
-    my $ures = URI::Fetch->fetch($url,
-                                 UserAgent        => $self->ua,
-                                 Cache            => $self->cache,
-                                 ContentAlterHook => $hook,
-                                 )
-        or return $self->_fail("url_fetch_error", "Error fetching URL: " . URI::Fetch->errstr);
+    my $res = Net::OpenID::URIFetch->fetch($url, $self, $hook);
 
-    # who actually uses HTTP gone response status?  uh, nobody.
-    if ($ures->status == URI::Fetch::URI_GONE()) {
-        return $self->_fail("url_gone", "URL is no longer available");
-    }
+    $$final_url_ref = $res->final_uri;
 
-    my $res = $ures->http_response;
-    $$final_url_ref = $res->request->uri->as_string;
-
-    return $ures->content;
+    return $res ? $res->content : undef;
 }
 
 sub _find_semantic_info {
@@ -238,6 +258,15 @@ sub _find_semantic_info {
             $val =~ /\brel=.openid\.(server|delegate)./i && ($temp = $1) &&
             $val =~ m!\bhref=[\"\']([^\"\']+)[\"\']!i) {
             $ret->{"openid.$temp"} = $1;
+            next;
+        }
+
+        # OpenID2 providers / local identifiers
+        # <link rel="openid2.provider" href="http://www.livejournal.com/misc/openid.bml" />
+        if ($type eq "link" &&
+            $val =~ /\brel=.openid2\.(provider|local_id)./i && ($temp = $1) &&
+            $val =~ m!\bhref=[\"\']([^\"\']+)[\"\']!i) {
+            $ret->{"openid2.$temp"} = $1;
             next;
         }
 
@@ -301,7 +330,7 @@ sub _find_semantic_info {
         $ret->{$k} =~ s/&(\w+);/$emap->{$1} || ""/eg;
     }
 
-    $self->_debug("semantic info ($url) = " . join(", ", %$ret));
+    $self->_debug("semantic info ($url) = " . join(", ", map { $_.' => '.$ret->{$_} } keys %$ret)) if $self->{debug};
 
     return $ret;
 }
@@ -316,6 +345,211 @@ sub _find_openid_server {
 
     return $self->_fail("no_identity_server") unless $sem_info->{"openid.server"};
     $sem_info->{"openid.server"};
+}
+
+sub is_server_response {
+    my Net::OpenID::Consumer $self = shift;
+    return $self->_message_mode ? 1 : 0;
+}
+
+sub handle_server_response {
+    my Net::OpenID::Consumer $self = shift;
+    my %callbacks_in = @_;
+    my %callbacks = ();
+
+    foreach my $cb (qw(not_openid setup_required cancelled verified error)) {
+        $callbacks{$cb} = delete($callbacks_in{$cb}) || sub { Carp::croak("No ".$cb." callback") };
+    }
+    Carp::croak("Unknown callbacks ".join(',', keys %callbacks)) if %callbacks_in;
+
+    unless ($self->is_server_response) {
+        return $callbacks{not_openid}->();
+    }
+
+    if (my $setup_url = $self->user_setup_url) {
+        return $callbacks{setup_required}->($setup_url);
+    }
+    elsif ($self->user_cancel) {
+        return $callbacks{cancelled}->();
+    }
+    elsif (my $vident = $self->verified_identity) {
+        return $callbacks{verified}->($vident);
+    }
+    else {
+        return $callbacks{error}->($self->errcode, $self->errtext);
+    }
+
+}
+
+sub _discover_acceptable_endpoints {
+    my Net::OpenID::Consumer $self = shift;
+    my $url = shift;
+    my %opts = @_;
+
+    # if return_early is set, we'll return as soon as we have enough
+    # information to determine the "primary" endpoint, and return
+    # that as the first (and possibly only) item in our response.
+    my $primary_only = delete $opts{primary_only} ? 1 : 0;
+
+    my $force_version = delete $opts{force_version};
+
+    Carp::croak("Unknown option(s) ".join(', ', keys(%opts))) if %opts;
+
+    # trim whitespace
+    $url =~ s/^\s+//;
+    $url =~ s/\s+$//;
+    return $self->_fail("empty_url", "Empty URL") unless $url;
+
+    # do basic canonicalization
+    $url = "http://$url" if $url && $url !~ m!^\w+://!;
+    return $self->_fail("bogus_url", "Invalid URL") unless $url =~ m!^https?://!i;
+    # add a slash, if none exists
+    $url .= "/" unless $url =~ m!^https?://.+/!i;
+
+    my @discovered_endpoints = ();
+    my $result = sub {
+        # We always prefer 2.0 endpoints to 1.1 ones, regardless of
+        # the priority chosen by the identifier.
+        return [
+            (grep { $_->{version} == 2 } @discovered_endpoints),
+            (grep { $_->{version} == 1 } @discovered_endpoints),
+        ];
+    };
+
+    # TODO: Support XRI too?
+
+    # First we Yadis service discovery
+    my $yadis = Net::OpenID::Yadis->new(consumer => $self);
+    if ($yadis->discover($url)) {
+        # FIXME: Currently we don't ever do _find_semantic_info in the Yadis
+        # code path, so an extra redundant HTTP request is done later
+        # when the semantic info is accessed.
+
+        my $final_url = $yadis->identity_url;
+        my @services = $yadis->services(
+            OpenID::util::version_2_xrds_service_url(),
+            OpenID::util::version_2_xrds_directed_service_url(),
+            OpenID::util::version_1_xrds_service_url(),
+        );
+        my $version2 = OpenID::util::version_2_xrds_service_url();
+        my $version1 = OpenID::util::version_1_xrds_service_url();
+        my $version2_directed = OpenID::util::version_2_xrds_directed_service_url();
+
+        foreach my $service (@services) {
+            my $service_uris = $service->URI;
+
+            # Service->URI seems to return all sorts of bizarre things, so let's
+            # normalize it to always be an arrayref.
+            if (ref($service_uris) eq 'ARRAY') {
+                my @sorted_id_servers = sort {
+                    my $pa = $a->{priority};
+                    my $pb = $b->{priority};
+                    return 0 unless defined($pa) || defined($pb);
+                    return -1 unless defined ($pb);
+                    return 1 unless defined ($pa);
+                    return $a->{priority} <=> $b->{priority}
+                } @$service_uris;
+                $service_uris = \@sorted_id_servers;
+            }
+            if (ref($service_uris) eq 'HASH') {
+                $service_uris = [ $service_uris->{content} ];
+            }
+            unless (ref($service_uris)) {
+                $service_uris = [ $service_uris ];
+            }
+
+            my $delegate = undef;
+            my @versions = ();
+
+            if (grep(/^${version2}$/, $service->Type)) {
+                # We have an OpenID 2.0 end-user identifier
+                $delegate = $service->extra_field("LocalID");
+                push @versions, 2;
+            }
+            if (grep(/^${version1}$/, $service->Type)) {
+                # We have an OpenID 1.1 end-user identifier
+                $delegate = $service->extra_field("Delegate", "http://openid.net/xmlns/1.0");
+                push @versions, 1;
+            }
+
+            if (@versions) {
+                foreach my $version (@versions) {
+                    next if defined($force_version) && $force_version != $version;
+                    foreach my $uri (@$service_uris) {
+                        push @discovered_endpoints, {
+                            uri => $uri,
+                            version => $version,
+                            final_url => $final_url,
+                            delegate => $delegate,
+                            sem_info => undef,
+                            mechanism => "Yadis",
+                        };
+                    }
+                }
+            }
+
+            if (grep(/^${version2_directed}$/, $service->Type)) {
+                # We have an OpenID 2.0 OP identifier (i.e. we're doing directed identity)
+                my $version = 2;
+                # In this case, the user's claimed identifier is a magic value
+                # and the actual identifier will be determined by the provider.
+                my $final_url = OpenID::util::version_2_identifier_select_url();
+                my $delegate = OpenID::util::version_2_identifier_select_url();
+
+                foreach my $uri (@$service_uris) {
+                    push @discovered_endpoints, {
+                        uri => $uri,
+                        version => $version,
+                        final_url => $final_url,
+                        delegate => $delegate,
+                        sem_info => undef,
+                        mechanism => "Yadis",
+                    };
+                }
+            }
+
+            if ($primary_only && scalar(@discovered_endpoints)) {
+                # We've got at least one endpoint now, so return early
+                return $result->();
+            }
+        }
+    }
+
+    # Now HTML-based discovery, both 2.0- and 1.1-style.
+    {
+        my $final_url = undef;
+        my $sem_info = $self->_find_semantic_info($url, \$final_url);
+
+        if ($sem_info) {
+            if ($sem_info->{"openid2.provider"}) {
+                unless (defined($force_version) && $force_version != 2) {
+                    push @discovered_endpoints, {
+                        uri => $sem_info->{"openid2.provider"},
+                        version => 2,
+                        final_url => $final_url,
+                        delegate => $sem_info->{"openid2.local_id"},
+                        sem_info => $sem_info,
+                        mechanism => "HTML",
+                    };
+                }
+            }
+            if ($sem_info->{"openid.server"}) {
+                unless (defined($force_version) && $force_version != 1) {
+                    push @discovered_endpoints, {
+                        uri => $sem_info->{"openid.server"},
+                        version => 1,
+                        final_url => $final_url,
+                        delegate => $sem_info->{"openid.delegate"},
+                        sem_info => $sem_info,
+                        mechanism => "HTML",
+                    };
+                }
+            }
+        }
+    }
+
+    return $result->();
+
 }
 
 # returns Net::OpenID::ClaimedIdentity
@@ -335,25 +569,40 @@ sub claimed_identity {
     # add a slash, if none exists
     $url .= "/" unless $url =~ m!^https?://.+/!i;
 
-    my $final_url;
+    my $endpoints = $self->_discover_acceptable_endpoints($url, primary_only => 1);
 
-    my $sem_info = $self->_find_semantic_info($url, \$final_url) or
-        return;
+    if (ref($endpoints) && @$endpoints) {
+        foreach my $endpoint (@$endpoints) {
 
-    my $id_server = $sem_info->{"openid.server"} or
+            next unless $endpoint->{version} >= $self->minimum_version;
+
+            $self->_debug("Discovered version $endpoint->{version} endpoint at $endpoint->{uri} via $endpoint->{mechanism}");
+            $self->_debug("Delegate is $endpoint->{delegate}") if $endpoint->{delegate};
+
+            return Net::OpenID::ClaimedIdentity->new(
+                identity         => $endpoint->{final_url},
+                server           => $endpoint->{uri},
+                consumer         => $self,
+                delegate         => $endpoint->{delegate},
+                protocol_version => $endpoint->{version},
+                semantic_info    => $endpoint->{sem_info},
+            );
+
+        }
+
+        # If we've fallen out here, then none of the available services are of the required version.
+        return $self->_fail("protocol_version_incorrect");
+
+    }
+    else {
         return $self->_fail("no_identity_server");
+    }
 
-    return Net::OpenID::ClaimedIdentity->new(
-                                             identity => $final_url,
-                                             server   => $id_server,
-                                             consumer => $self,
-                                             delegate => $sem_info->{'openid.delegate'},
-                                             );
 }
 
 sub user_cancel {
     my Net::OpenID::Consumer $self = shift;
-    return $self->args("openid.mode") eq "cancel";
+    return $self->_message_mode eq "cancel";
 }
 
 sub user_setup_url {
@@ -361,9 +610,15 @@ sub user_setup_url {
     my %opts = @_;
     my $post_grant = delete $opts{'post_grant'};
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
-    return $self->_fail("bad_mode") unless $self->args("openid.mode") eq "id_res";
 
-    my $setup_url = $self->args("openid.user_setup_url");
+    if ($self->_message_version == 1) {
+        return $self->_fail("bad_mode") unless $self->_message_mode eq "id_res";
+    }
+    else {
+        return undef unless $self->_message_mode eq 'setup_needed';
+    }
+
+    my $setup_url = $self->message("user_setup_url");
 
     OpenID::util::push_url_arg(\$setup_url, "openid.post_grant", $post_grant)
         if $setup_url && $post_grant;
@@ -378,21 +633,56 @@ sub verified_identity {
     my $rr = delete $opts{'required_root'} || $self->{required_root};
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
 
-    return $self->_fail("bad_mode") unless $self->args("openid.mode") eq "id_res";
+    return $self->_fail("bad_mode") unless $self->_message_mode eq "id_res";
 
     # the asserted identity (the delegated one, if there is one, since the protocol
     # knows nothing of the original URL)
-    my $a_ident  = $self->args("openid.identity")     or return $self->_fail("no_identity");
+    my $a_ident  = $self->message("identity")     or return $self->_fail("no_identity");
 
-    my $sig64    = $self->args("openid.sig")          or return $self->_fail("no_sig");
-    
+    my $sig64    = $self->message("sig")          or return $self->_fail("no_sig");
+
     # fix sig if the OpenID auth server failed to properly escape pluses (+) in the sig
     $sig64 =~ s/ /+/g;
 
-    my $returnto = $self->args("openid.return_to")    or return $self->_fail("no_return_to");
-    my $signed   = $self->args("openid.signed");
+    my $returnto = $self->message("return_to")    or return $self->_fail("no_return_to");
+    my $signed   = $self->message("signed");
 
-    my $real_ident = $self->args("oic.identity") || $a_ident;
+    my $possible_endpoints;
+    my $server;
+    my $claimed_identity;
+
+    my $real_ident;
+    if ($self->_message_version == 1) {
+        $real_ident = $self->args("oic.identity") || $a_ident;
+
+        # In version 1, we have to assume that the primary server
+        # found during discovery is the one sending us this message.
+        $possible_endpoints = $self->_discover_acceptable_endpoints($real_ident, force_version => 1);
+
+        if ($possible_endpoints && @$possible_endpoints) {
+            $possible_endpoints = [ $possible_endpoints->[0] ];
+            $server = $possible_endpoints->[0]{uri};
+        }
+        else {
+            # We just fall out of here and bail out below for having no endpoints.
+        }
+    }
+    else {
+        $real_ident = $self->message("claimed_id") || $a_ident;
+
+        # In version 2, the OP tells us its URL.
+        $server = $self->message("op_endpoint");
+        $possible_endpoints = $self->_discover_acceptable_endpoints($real_ident, force_version => 2);
+
+        # FIXME: It kinda sucks that the above will always do both Yadis and HTML discovery, even though
+        # in most cases only one will be in use.
+    }
+
+    $self->_debug("Server is $server");
+
+    unless ($possible_endpoints && @$possible_endpoints) {
+        return $self->_fail("no_identity_server");
+    }
 
     # check that returnto is for the right host
     return $self->_fail("bogus_return_to") if $rr && $returnto !~ /^\Q$rr\E/;
@@ -412,19 +702,75 @@ sub verified_identity {
         return $self->_fail("time_bad_sig") unless $sig eq $good_sig;
     }
 
-    my $final_url;
-    my $sem_info = $self->_find_semantic_info($real_ident, \$final_url);
-    return $self->_fail("unexpected_url_redirect") unless $final_url eq $real_ident;
+    my $last_error = undef;
 
-    my $server = $sem_info->{"openid.server"} or
-        return $self->_fail("no_identity_server");
+    foreach my $endpoint (@$possible_endpoints) {
+        my $final_url = $endpoint->{final_url};
+        my $endpoint_uri = $endpoint->{uri};
+        my $delegate = $endpoint->{delegate};
 
-    # if openid.delegate was used, check that it was done correctly
-    if ($a_ident ne $real_ident) {
-        return $self->_fail("bogus_delegation") unless $sem_info->{"openid.delegate"} eq $a_ident;
+        my $error = sub {
+            $self->_debug("$endpoint_uri not acceptable: ".$_[0]);
+            $last_error = $_[0];
+        };
+
+        # The endpoint_uri must match our $server
+        if ($endpoint_uri ne $server) {
+            $error->("server_not_allowed");
+            next;
+        }
+
+        # OpenID 2.0 wants us to exclude the fragment part of the URL when doing equality checks
+        my $a_ident_nofragment = $a_ident;
+        my $real_ident_nofragment = $real_ident;
+        my $final_url_nofragment = $final_url;
+        if ($self->_message_version >= 2) {
+            $a_ident_nofragment =~ s/\#.*$//x;
+            $real_ident_nofragment =~ s/\#.*$//x;
+            $final_url_nofragment =~ s/\#.*$//x;
+        }
+        unless ($final_url_nofragment eq $real_ident_nofragment) {
+            $error->("unexpected_url_redirect");
+            next;
+        }
+
+        # Protocol version must match
+        unless ($endpoint->{version} == $self->_message_version) {
+            $error->("protocol_version_incorrect");
+            next;
+        }
+
+        # if openid.delegate was used, check that it was done correctly
+        if ($a_ident_nofragment ne $real_ident_nofragment) {
+            my $a_ident_nofragment = $a_ident;
+            $a_ident_nofragment =~ s/\#.*$//;
+            unless ($delegate eq $a_ident) {
+                $error->("bogus_delegation");
+                next;
+            }
+        }
+
+        # If we've got this far then we've found the right endpoint.
+
+        $claimed_identity =  Net::OpenID::ClaimedIdentity->new(
+            identity         => $endpoint->{final_url},
+            server           => $endpoint->{uri},
+            consumer         => $self,
+            delegate         => $endpoint->{delegate},
+            protocol_version => $endpoint->{version},
+            semantic_info    => $endpoint->{sem_info},
+        );
+        last;
+
     }
 
-    my $assoc_handle = $self->args("openid.assoc_handle");
+    unless ($claimed_identity) {
+        # We failed to find a good endpoint in the above loop, so
+        # lets bail out.
+        return $self->_fail($last_error);
+    }
+
+    my $assoc_handle = $self->message("assoc_handle");
 
     $self->_debug("verified_identity: assoc_handle: $assoc_handle");
     my $assoc = Net::OpenID::Association::handle_assoc($self, $server, $assoc_handle);
@@ -462,7 +808,7 @@ sub verified_identity {
         # and copy in all signed parameters that we don't already have into %post
         foreach my $param (split(/,/, $signed)) {
             next unless $param =~ /^[\w\.]+$/;
-            my $val = $self->args("openid.$param");
+            my $val = $self->args('openid.'.$param);
             $signed_fields{$param} = $val;
             next if $post{"openid.$param"};
             $post{"openid.$param"} = $val;
@@ -470,7 +816,7 @@ sub verified_identity {
 
         # if the server told us our handle as bogus, let's ask in our
         # check_authentication mode whether that's true
-        if (my $ih = $self->args("openid.invalidate_handle")) {
+        if (my $ih = $self->message("invalidate_handle")) {
             $post{"openid.invalidate_handle"} = $ih;
         }
 
@@ -501,14 +847,10 @@ sub verified_identity {
 
     # verified!
     return Net::OpenID::VerifiedIdentity->new(
-                                              identity  => $real_ident,
-                                              foaf      => $sem_info->{"foaf"},
-                                              foafmaker => $sem_info->{"foaf.maker"},
-                                              rss       => $sem_info->{"rss"},
-                                              atom      => $sem_info->{"atom"},
-                                              consumer  => $self,
-                                              signed_fields => \%signed_fields,
-                                              );
+        claimed_identity => $claimed_identity,
+        consumer  => $self,
+        signed_fields => \%signed_fields,
+    );
 }
 
 sub supports_consumer_secret { 1; }
@@ -532,6 +874,30 @@ sub _get_consumer_secret {
 }
 
 package OpenID::util;
+
+use constant VERSION_1_NAMESPACE => "http://openid.net/signon/1.1";
+use constant VERSION_2_NAMESPACE => "http://specs.openid.net/auth/2.0";
+
+# I guess this is a bit daft since constants are subs anyway,
+# but whatever.
+sub version_1_namespace {
+    return VERSION_1_NAMESPACE;
+}
+sub version_2_namespace {
+    return VERSION_2_NAMESPACE;
+}
+sub version_1_xrds_service_url {
+    return VERSION_1_NAMESPACE;
+}
+sub version_2_xrds_service_url {
+    return "http://specs.openid.net/auth/2.0/signon";
+}
+sub version_2_xrds_directed_service_url {
+    return "http://specs.openid.net/auth/2.0/server";
+}
+sub version_2_identifier_select_url {
+    return "http://specs.openid.net/auth/2.0/identifier_select";
+}
 
 # From Digest::HMAC
 sub hmac_sha1_hex {
@@ -610,6 +976,17 @@ sub push_url_arg {
         $$uref .= $got_qmark ? "&" : ($got_qmark = 1, "?");
         $$uref .= eurl($key) . "=" . eurl($value);
     }
+}
+
+sub push_openid2_url_arg {
+    my $uref = shift;
+    my %args = @_;
+    push_url_arg($uref,
+        'openid.ns' => VERSION_2_NAMESPACE,
+        map {
+            'openid.'.$_ => $args{$_}
+        } keys %args,
+    );
 }
 
 sub time_to_w3c {
@@ -711,8 +1088,31 @@ Net::OpenID::Consumer - library for consumers of OpenID identities
   );
 
   # so you send the user off there, and then they come back to
-  # openid-check.app, then you see what the identity server said;
+  # openid-check.app, then you see what the identity server said.
 
+  # Either use callback-based API (recommended)...
+  $csr->handle_server_response(
+      not_openid => sub {
+          die "Not an OpenID message";
+      },
+      setup_required => sub {
+          my $setup_url = shift;
+          # Redirect the user to $setup_url
+      },
+      cancelled => sub {
+          # Do something appropriate when the user hits "cancel" at the OP
+      },
+      verified => sub {
+          my $vident = shift;
+          # Do something with the VerifiedIdentity object $vident
+      },
+      error => sub {
+          my $err = shift;
+          die($err);
+      },
+  );
+
+  # ... or handle the various cases yourself
   if (my $setup_url = $csr->user_setup_url) {
        # redirect/link/popup user to $setup_url
   } elsif ($csr->user_cancel) {
@@ -731,7 +1131,7 @@ This is the Perl API for (the consumer half of) OpenID, a distributed
 identity system based on proving you own a URL, which is then your
 identity.  More information is available at:
 
-  http://www.danga.com/openid/
+  http://openid.net/
 
 =head1 CONSTRUCTOR
 
@@ -742,8 +1142,8 @@ identity.  More information is available at:
 my $csr = Net::OpenID::Consumer->new([ %opts ]);
 
 You can set the C<ua>, C<cache>, C<consumer_secret>, C<required_root>,
-and C<args> in the constructor.  See the corresponding method
-descriptions below.
+C<minimum_version> and C<args> in the constructor.  See the corresponding
+method descriptions below.
 
 =back
 
@@ -794,6 +1194,27 @@ the same time.)
 
 Your secret may not exceed 255 characters.
 
+=item $csr->B<minimum_version>(2)
+
+=item $csr->B<minimum_version>
+
+Get or set the minimum OpenID protocol version supported. Currently
+the only useful value you can set here is 2, which will cause
+1.1 identifiers to fail discovery with the error C<protocol_version_incorrect>.
+
+In most cases you'll want to allow both 1.1 and 2.0 identifiers,
+which is the default. If you want, you can set this property to 1
+to make this behavior explicit.
+
+=item $csr->B<message>($key)
+
+Obtain a value from the message contained in the request arguments
+with the given key. This can only be used to obtain core arguments,
+not extension arguments.
+
+Call this method without a C<$key> argument to get a L<Net::OpenID::IndirectMessage>
+object representing the message.
+
 =item $csr->B<args>($ref)
 
 =item $csr->B<args>($param)
@@ -810,6 +1231,10 @@ Where $reference is either a HASH ref, CODE ref, Apache $r,
 Apache::Request $apreq, or CGI.pm $cgi.  If a CODE ref, the subref
 must return the value given one argument (the parameter to retrieve)
 
+If you pass in an Apache $r object, you must not have already called
+$r->content as the consumer module will want to get the request
+arguments out of here in the case of a POST request.
+
 2. Get a paramater:
 
 my $foo = $csr->args("foo");
@@ -817,12 +1242,19 @@ my $foo = $csr->args("foo");
 When given an unblessed scalar, it retrieves the value.  It croaks if
 you haven't defined a way to get at the parameters.
 
+Most callers should instead use the C<message> method above, which
+abstracts away the need to understand OpenID's message serialization.
+
 3. Get the getter:
 
 my $code = $csr->args;
 
 Without arguments, returns a subref that returns the value given a
 parameter name.
+
+Most callers should instead use the C<message> method above with no
+arguments, which returns an object from which extension attributes
+can be obtained by their documented namespace URI.
 
 =item $nos->B<required_root>($url_prefix)
 
@@ -858,6 +1290,33 @@ codes (from $csr->B<errcode>) to decide what to present to the user:
 
 =back
 
+=item $csr->B<handle_server_response>( %callbacks );
+
+When a request comes in that contains a response from an OpenID provider,
+figure out what it means and dispatch to an appropriate callback to handle
+the request. This is the callback-based alternative to explicitly calling
+the methods below in the correct sequence, and is recommended unless you
+need to do something strange.
+
+Anything you return from the selected callback function will be returned
+by this method verbatim. This is useful if the caller needs to return
+something different in each case.
+
+The available callbacks are:
+
+=over 8
+
+=item B<not_openid> - the request isn't an OpenID response after all.
+
+=item B<setup_required>($setup_url) - the provider needs to present some UI to the user before it can respond. Send the user to the given URL by some means.
+
+=item B<cancelled> - the user cancelled the authentication request from the provider's UI
+
+=item B<verified>($verified_identity) - the user's identity has been successfully verified. A L<Net::OpenID::VerifiedIdentity> object is passed in.
+
+=item B<error>($errcode, $errmsg) - an error has occured. An error code and message are provided.
+
+=back
 
 =item $csr->B<user_setup_url>( [ %opts ] )
 
@@ -945,7 +1404,7 @@ This is free software. IT COMES WITHOUT WARRANTY OF ANY KIND.
 
 =head1 SEE ALSO
 
-OpenID website:  http://www.danga.com/openid/
+OpenID website: http://openid.net/
 
 L<Net::OpenID::ClaimedIdentity> -- part of this module
 
@@ -956,3 +1415,8 @@ L<Net::OpenID::Server> -- another module, for acting like an OpenID server
 =head1 AUTHORS
 
 Brad Fitzpatrick <brad@danga.com>
+
+Tatsuhiko Miyagawa <miyagawa@sixapart.com>
+
+Martin Atkins <mart@degeneration.co.uk>
+
