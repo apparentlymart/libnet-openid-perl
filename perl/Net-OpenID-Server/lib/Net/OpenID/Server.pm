@@ -16,6 +16,8 @@ use fields (
             'get_user',        # subref returning a defined value representing the logged in user, or undef if no user.
                                # this return value ($u) is passed to the other subrefs
 
+            'get_identity',    # subref given a ( $u, $identity_url).
+
             'is_identity',     # subref given a ($u, $identity_url).  should return true if $u owns the URL
                                # tree given by $identity_url.  not that $u may be undef, if get_user returned undef.
                                # it's up to you if you immediately return 0 on $u or do some work to make the
@@ -25,6 +27,7 @@ use fields (
                                # to know about their identity.  if you don't care about timing attacks, you can
                                # immediately return 0 if ! $is_identity, as the entire case can't succeed
                                # unless both is_identity and is_trusted pass, and is_identity is called first.
+            'endpoint_url',
 
             'setup_url',       # setup URL base (optionally with query parameters) where users should go
                                # to login/setup trust/etc.
@@ -49,6 +52,9 @@ use Crypt::DH 0.05;
 use Math::BigInt;
 use Time::Local qw(timegm);
 
+my $OPENID2_NS = qq!http://specs.openid.net/auth/2.0!;
+my $OPENID2_ID_SELECT = qq!http://specs.openid.net/auth/2.0/identifier_select!;
+
 sub new {
     my Net::OpenID::Server $self = shift;
     $self = fields::new( $self ) unless ref $self;
@@ -63,6 +69,8 @@ sub new {
     $opts{'secret_gen_interval'} ||= 86400;
     $opts{'secret_expire_age'}   ||= 86400 * 14;
 
+    $opts{'get_identity'} ||= sub { $_[1] };
+
     # use compatibility mode until 30 days from July 10, 2005
     unless (defined $opts{'compat'}) {
         $opts{'compat'} = time() < 1121052339 + 86400*30 ? 1 : 0;
@@ -70,8 +78,8 @@ sub new {
 
     $self->$_(delete $opts{$_})
         foreach (qw(
-                    get_user is_identity is_trusted
-                    setup_url setup_map server_secret
+                    get_user get_identity is_identity is_trusted
+                    endpoint_url setup_url setup_map server_secret
                     secret_gen_interval secret_expire_age
                     compat
                     ));
@@ -81,12 +89,14 @@ sub new {
 }
 
 sub get_user     { &_getsetcode; }
+sub get_identity { &_getsetcode; }
 sub is_identity  { &_getsetcode; }
 sub is_trusted   { &_getsetcode; }
 
-sub setup_url   { &_getset; }
-sub setup_map   { &_getset; }
-sub compat      { &_getset; }
+sub endpoint_url { &_getset; }
+sub setup_url    { &_getset; }
+sub setup_map    { &_getset; }
+sub compat       { &_getset; }
 
 sub server_secret       { &_getset; }
 sub secret_gen_interval { &_getset; }
@@ -212,8 +222,10 @@ sub signed_return_url {
     my Net::OpenID::Server $self = shift;
     my %opts = @_;
     my $identity     = delete $opts{'identity'};
+    my $claimed_id   = delete $opts{'claimed_id'};
     my $return_to    = delete $opts{'return_to'};
     my $assoc_handle = delete $opts{'assoc_handle'};
+    my $ns           = delete $opts{'ns'};
     my $extra_fields = delete $opts{'additional_fields'} || {};
 
     # verify the trust_root, if provided
@@ -241,14 +253,21 @@ sub signed_return_url {
                                                                       dumb => 1);
     }
 
-    my @sign = qw(mode identity return_to);
+    $claimed_id ||= $identity;
+    $claimed_id = $identity if $claimed_id eq $OPENID2_ID_SELECT;
+    my @sign = qw(mode claimed_id identity op_endpoint return_to response_nonce assoc_handle);
+
     my $now = time();
     my %arg = (
-               mode         => "id_res",
-               identity     => $identity,
-               return_to    => $return_to,
-               assoc_handle => $assoc_handle,
+               mode           => "id_res",
+               identity       => $identity,
+               claimed_id     => $claimed_id,
+               return_to      => $return_to,
+               assoc_handle   => $assoc_handle,
+               response_nonce => _time_to_w3c($now) . _rand_chars(6),
                );
+    $arg{'op_endpoint'} = $self->endpoint_url if $self->endpoint_url;
+    $arg{'ns'} = $ns if $ns;
 
     # compatibility mode with version 1.0 of the protocol which still
     # had absolute dates
@@ -300,6 +319,7 @@ sub _mode_checkid {
     return $self->_fail("no_return_to") unless $return_to =~ m!^https?://!;
 
     my $trust_root = $self->args("openid.trust_root") || $return_to;
+    $trust_root = $self->args("openid.realm") if $self->args('openid.ns') eq $OPENID2_NS;
     return $self->_fail("invalid_trust_root") unless _url_is_under($trust_root, $return_to);
 
     my $identity = $self->args("openid.identity");
@@ -308,6 +328,9 @@ sub _mode_checkid {
     $trust_root =~ s/\?.*//;
 
     my $u = $self->_proxy("get_user");
+    if ( $self->args('openid.ns') eq $OPENID2_NS && $identity eq $OPENID2_ID_SELECT ) {
+        $identity = $self->_proxy("get_identity",  $u, $identity );
+    }
     my $is_identity = $self->_proxy("is_identity", $u, $identity);
     my $is_trusted  = $self->_proxy("is_trusted",  $u, $trust_root, $is_identity);
 
@@ -315,8 +338,10 @@ sub _mode_checkid {
     if ($is_identity && $is_trusted) {
         my $ret_url = $self->signed_return_url(
                                                identity => $identity,
+                                               claimed_id => $self->args('openid.claimed_id'),
                                                return_to => $return_to,
                                                assoc_handle => $self->args("openid.assoc_handle"),
+                                               ns => $self->args('openid.ns'),
                                                );
         return ("redirect", $ret_url);
     }
@@ -327,10 +352,12 @@ sub _mode_checkid {
     # the user-agent's full window, and we can do whatever we want with them now.
     my %setup_args = (
                       $self->_setup_map("trust_root"),   $trust_root,
+                      $self->_setup_map("realm"),        $trust_root,
                       $self->_setup_map("return_to"),    $return_to,
                       $self->_setup_map("identity"),     $identity,
                       $self->_setup_map("assoc_handle"), $self->args("openid.assoc_handle"),
                       );
+    $setup_args{'ns'}  = $self->args('openid.ns') if $self->args('openid.ns');
 
     my $setup_url = $self->{setup_url} or Carp::croak("No setup_url defined.");
     _push_url_arg(\$setup_url, %setup_args);
@@ -464,6 +491,7 @@ sub _mode_associate {
     # make relative form of expires
     my $exp_rel = $exp_abs - $now;
 
+    $prop{'ns'}   = $self->pargs('openid.ns') if $self->pargs('openid.ns');
     $prop{'assoc_type'}   = $assoc_type;
     $prop{'assoc_handle'} = $assoc_handle;
     $prop{'expires_in'}   = $exp_rel;
@@ -527,6 +555,7 @@ sub _mode_check_authentication {
     my $ret = {
         is_valid => $is_valid ? "true" : "false",
     };
+    $ret->{'ns'}   = $self->pargs('openid.ns') if $self->pargs('openid.ns');
 
     if ($self->{compat}) {
         $ret->{lifetime} = 3600;
@@ -817,8 +846,10 @@ Net::OpenID::Server - library for building your own OpenID server
     get_args     => $cgi,
     post_args    => $cgi,
     get_user     => \&get_user,
+    get_identity => \&get_identity,
     is_identity  => \&is_identity,
     is_trusted   => \&is_trusted,
+    endpoint_url => "http://example.com/server.bml",
     setup_url    => "http://example.com/pass-identity.bml",
   );
 
@@ -917,6 +948,10 @@ identity included in the GET arguments.  The %opts are:
 
 Required.  The identity URL to sign.
 
+=item C<claimed_id>
+
+Optional.  The claimed_id URL to sign.
+
 =item C<return_to>
 
 Required.  The base of the URL being generated.
@@ -930,6 +965,10 @@ consumer mode is used, and the library picks the handle.
 
 Optional.  If present, the C<return_to> URL will be checked to be within
 ("under") this trust_root.  If not, the URL returned will be undef.
+
+=item C<ns>
+
+Optional.
 
 =item C<additional_fields>
 
@@ -998,6 +1037,13 @@ in user, or undef if no user.  The return value (let's call it $u) is
 not touched.  It's simply given back to your other callbacks
 (is_identity and is_trusted).
 
+=item $nos->B<get_identity>($code)
+
+=item $code = $nos->B<get_identity>; $identity = $code->($u, $identity);
+
+For OpenID 2.0. Get/set the subref returning a identity. This is called 
+when claimed identity is 'identifier_select'.
+
 =item $nos->B<is_identity>($code)
 
 =item $code = $nos->B<is_identity>; $code->($u, $identity_url)
@@ -1052,6 +1098,12 @@ Get/set the user setup URL.  This is the URL the user is told to go to
 if they're either not logged in, not who they said they were, or trust
 hasn't been setup.  You use the same URL in all three cases.  Your
 setup URL may contain existing query parameters.
+
+=item $nos->B<endpoint_url>($url)
+
+=item $url = $nos->B<endpoint_url>
+
+For OpenID 2.0. Get/set the op_endpoint URL.
 
 =item $nos->B<setup_map>($hashref)
 

@@ -25,6 +25,7 @@ local *Net::OpenID::Consumer::_find_semantic_info = sub {
     $$final_url_ref = $url;
     return { "openid.server" => "http://example.com/op" };
 };
+local *Net::OpenID::Yadis::discover = sub {};
 
 while (my($url, $normalized) = splice(@tests, 0, 2)) {
     my $csr = Net::OpenID::Consumer->new;
