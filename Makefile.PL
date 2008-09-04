@@ -8,7 +8,6 @@ WriteMakefile( 'NAME' => 'Net::OpenID::Consumer',
                    'Digest::SHA1'   => 0,
                    'URI'            => 0,
                    'Time::Local'    => 0,
-                   'URI::Fetch'     => 0.02,
                    'Crypt::DH'      => 0.05,
                },
                ($] >= 5.005 ?
