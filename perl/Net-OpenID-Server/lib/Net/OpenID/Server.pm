@@ -874,7 +874,10 @@ This is the Perl API for (the server half of) OpenID, a distributed
 identity system based on proving you own a URL, which is then your
 identity.  More information is available at:
 
-  http://www.danga.com/openid/
+  http://openid.net/
+
+As of version 1.01 this module has support for both OpenID 1.1 and
+2.0. Prior to this, only 1.1 was supported.
 
 =head1 CONSTRUCTOR
 
@@ -1153,7 +1156,7 @@ This is free software. IT COMES WITHOUT WARRANTY OF ANY KIND.
 
 =head1 SEE ALSO
 
-OpenID website:  http://www.danga.com/openid/
+OpenID website:  http://openid.net/
 
 =head1 AUTHORS
 
