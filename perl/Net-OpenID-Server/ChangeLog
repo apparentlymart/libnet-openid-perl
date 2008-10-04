@@ -1,3 +1,7 @@
+1.01:
+
+	* OpenID 2.0 support from kazeburo from mixi.jp.
+
 0.13: 2007-09-09
 
 	* remove test's non-used/non-declared "use" of DSA modules.
