@@ -7,7 +7,7 @@ $VERSION = "0.05";
 
 use base qw(Exporter);
 use Carp ();
-use URI::Fetch 0.02;
+use Net::OpenID::URIFetch;
 use XML::Simple;
 use Net::OpenID::Yadis::Service;
 
