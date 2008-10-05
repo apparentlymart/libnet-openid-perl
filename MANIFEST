@@ -5,6 +5,12 @@ lib/Net/OpenID/Consumer.pm
 lib/Net/OpenID/VerifiedIdentity.pm
 lib/Net/OpenID/ClaimedIdentity.pm
 lib/Net/OpenID/Association.pm
+lib/Net/OpenID/IndirectMessage.pm
+lib/Net/OpenID/URIFetch.pm
+lib/Net/OpenID/Yadis.pm
+lib/Net/OpenID/Yadis/Service.pm
 t/00-use.t
 t/01-misc.t
-META.yml                                 Module meta-data (added by MakeMaker)
+t/02-canonical.t
+t/03-messages.t
+
