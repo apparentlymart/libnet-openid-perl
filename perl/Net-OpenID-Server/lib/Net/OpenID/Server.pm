@@ -1154,6 +1154,12 @@ maintainer.
 
 This is free software. IT COMES WITHOUT WARRANTY OF ANY KIND.
 
+=head1 MAILING LIST
+
+The Net::OpenID family of modules has a mailing list powered
+by Google Groups. For more information, see
+http://groups.google.com/group/openid-perl .
+
 =head1 SEE ALSO
 
 OpenID website:  http://openid.net/
