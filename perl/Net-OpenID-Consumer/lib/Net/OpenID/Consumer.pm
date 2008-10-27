@@ -36,6 +36,7 @@ use Digest::SHA1 ();
 use Crypt::DH 0.05;
 use Time::Local;
 use HTTP::Request;
+use Net::DNS;
 
 sub new {
     my Net::OpenID::Consumer $self = shift;
@@ -386,25 +387,45 @@ sub _discover_acceptable_endpoints {
     my $url = shift;
     my %opts = @_;
 
-    # if return_early is set, we'll return as soon as we have enough
-    # information to determine the "primary" endpoint, and return
-    # that as the first (and possibly only) item in our response.
-    my $primary_only = delete $opts{primary_only} ? 1 : 0;
-
-    my $force_version = delete $opts{force_version};
-
-    Carp::croak("Unknown option(s) ".join(', ', keys(%opts))) if %opts;
-
     # trim whitespace
     $url =~ s/^\s+//;
     $url =~ s/\s+$//;
     return $self->_fail("empty_url", "Empty URL") unless $url;
+
+    # Figure out what kind of URI we're holding. The user
+    # probably didn't enter the canonical form, so we're tolerant here.
+
+    # Email. Anything with an at sign with at least one non-atsign on each side of it
+    # is considered an email address.
+    if ($url =~ /^[^\@:]+\@[^\@]+$/ || $url =~ /^mailto:/) {
+        $self->_debug("Finding acceptable endpoints for email URL $url");
+        return $self->_discover_acceptable_endpoints_mailto($url, %opts);
+    }
+
+    # Otherwise, we're holding an http: or https: URL.
 
     # do basic canonicalization
     $url = "http://$url" if $url && $url !~ m!^\w+://!;
     return $self->_fail("bogus_url", "Invalid URL") unless $url =~ m!^https?://!i;
     # add a slash, if none exists
     $url .= "/" unless $url =~ m!^https?://.+/!i;
+
+    $self->_debug("Finding acceptable endpoints for HTTP URL $url");
+    return $self->_discover_acceptable_endpoints_http($url, %opts);
+
+}
+
+sub _discover_acceptable_endpoints_http {
+    my Net::OpenID::Consumer $self = shift;
+    my $url = shift;
+    my %opts = @_;
+
+    # if primary_only is set, we'll return as soon as we have enough
+    # information to determine the "primary" endpoint, and return
+    # that as the first (and possibly only) item in our response.
+    my $primary_only = delete $opts{primary_only} ? 1 : 0;
+
+    my $force_version = delete $opts{force_version};
 
     my @discovered_endpoints = ();
     my $result = sub {
@@ -552,6 +573,156 @@ sub _discover_acceptable_endpoints {
 
 }
 
+sub _discover_acceptable_endpoints_mailto {
+    my Net::OpenID::Consumer $self = shift;
+    my $email = shift;
+    my %opts = @_;
+
+    $email =~ s/^mailto://;
+    $email =~ s/\.+/./;
+    $email =~ s/\.$//;
+
+    # Try DNS first.
+    my $resolver = Net::DNS::Resolver->new(
+        tcp_timeout => 2,
+        udp_timeout => 2,
+        defnames => 0,
+    );
+
+    my $openid_values_for_hostname = sub {
+        my $hostname = shift;
+
+        $self->_debug("Finding OpenID TXT records for $hostname");
+
+        my $result = $resolver->query($hostname, 'TXT', 'IN');
+
+        my %ret = ();
+
+        if ($result) {
+            foreach my $rr ($result->answer) {
+                next unless $rr->isa('Net::DNS::RR::TXT');
+                my $text = $rr->txtdata;
+                next unless $text =~ /^openid2\./;
+
+                foreach my $bit (split(/\s+/, $text)) {
+                    my ($k, $v) = split(/=/, $bit, 2);
+                    $ret{$k} = $v;
+                }
+            }
+        }
+
+        return %ret;
+
+    };
+
+    # First we try to match on the whole email address.
+    my $full_hostname = $email;
+    $full_hostname =~ s/\@/./;
+    $self->_debug("Email address $email becomes hostname $full_hostname");
+
+    my %result = $openid_values_for_hostname->($full_hostname);
+
+    if (my $new_url = $result{'openid2.redirect'}) {
+        # FIXME: Limit the number of redirects allowed for a given
+        # identifier, so we don't recurse endlessly.
+        $self->_debug("Redirecting to $new_url");
+        return $self->_discover_acceptable_endpoints($new_url, %opts);
+    }
+    elsif (my $openid_provider = $result{'openid2.provider'}) {
+        # Success!
+        return [{
+            uri => $openid_provider,
+            version => 2,
+            final_url => 'mailto:'.$email,
+            delegate => $result{'openid2.local_id'},
+            sem_info => undef,
+            mechanism => 'DNS',
+        }];
+    }
+
+    # If that didn't work out, we next try the email domain, which
+    # allows the whole domain to have a single OpenID endpoint.
+    # Delegations are not allowed in this case.
+    my ($user, $domain) = split(/\@/, $email);
+    %result = $openid_values_for_hostname->($domain);
+
+    if (my $new_url = $result{'openid2.redirect'}) {
+        # FIXME: Limit the number of redirects allowed for a given
+        # identifier, so we don't recurse endlessly.
+        $self->_debug("Redirecting to $new_url");
+        return $self->_discover_acceptable_endpoints($new_url, %opts);
+    }
+    elsif (my $openid_provider = $result{'openid2.provider'}) {
+        # Success!
+        return [{
+            uri => $openid_provider,
+            version => 2,
+            final_url => 'mailto:'.$email,
+            delegate => undef,
+            sem_info => undef,
+            mechanism => 'DNS',
+        }];
+    }
+
+    # Finally, we turn the domain part into an HTTP URL and do
+    # Yadis discovery. We don't allow redirects nor delegation
+    # in this case.
+    my $url = "http://".$domain."/";
+
+    my $yadis = Net::OpenID::Yadis->new(consumer => $self);
+    if ($yadis->discover($url)) {
+        my @services = $yadis->services(
+            "http://specs.openid.net/auth/2.0/signon/email",
+        );
+
+        my @results = ();
+
+        foreach my $service (@services) {
+            my $service_uris = $service->URI;
+
+            # Service->URI seems to return all sorts of bizarre things, so let's
+            # normalize it to always be an arrayref.
+            # FIXME: Refactor so that this nonsense is hidden away inside the Yadis
+            # library.
+            if (ref($service_uris) eq 'ARRAY') {
+                my @sorted_id_servers = sort {
+                    my $pa = $a->{priority};
+                    my $pb = $b->{priority};
+                    return 0 unless defined($pa) || defined($pb);
+                    return -1 unless defined ($pb);
+                    return 1 unless defined ($pa);
+                    return $a->{priority} <=> $b->{priority}
+                } @$service_uris;
+                $service_uris = \@sorted_id_servers;
+            }
+            if (ref($service_uris) eq 'HASH') {
+                $service_uris = [ $service_uris->{content} ];
+            }
+            unless (ref($service_uris)) {
+                $service_uris = [ $service_uris ];
+            }
+
+            foreach my $uri (@$service_uris) {
+                push @results, {
+                    uri => $uri,
+                    version => 2,
+                    final_url => 'mailto:'.$email,
+                    delegate => undef,
+                    sem_info => undef,
+                    mechanism => "Yadis",
+                };
+            }
+
+        }
+
+        return \@results;
+
+    }
+
+    return ();
+}
+
+
 # returns Net::OpenID::ClaimedIdentity
 sub claimed_identity {
     my Net::OpenID::Consumer $self = shift;
@@ -564,10 +735,10 @@ sub claimed_identity {
     return $self->_fail("empty_url", "Empty URL") unless $url;
 
     # do basic canonicalization
-    $url = "http://$url" if $url && $url !~ m!^\w+://!;
-    return $self->_fail("bogus_url", "Invalid URL") unless $url =~ m!^https?://!i;
+    #$url = "http://$url" if $url && $url !~ m!^\w+://!;
+    #return $self->_fail("bogus_url", "Invalid URL") unless $url =~ m!^https?://!i;
     # add a slash, if none exists
-    $url .= "/" unless $url =~ m!^https?://.+/!i;
+    #$url .= "/" unless $url =~ m!^https?://.+/!i;
 
     my $endpoints = $self->_discover_acceptable_endpoints($url, primary_only => 1);
 
@@ -824,6 +995,7 @@ sub verified_identity {
         $req->header("Content-Type" => "application/x-www-form-urlencoded");
         $req->content(join("&", map { "$_=" . OpenID::util::eurl($post{$_}) } keys %post));
 
+        $self->_debug("Doing dumb verify request to $server");
         my $ua  = $self->ua;
         my $res = $ua->request($req);
 
