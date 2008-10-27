@@ -9,7 +9,7 @@ use Storable;
 package Net::OpenID::Consumer;
 
 use vars qw($VERSION);
-$VERSION = "1.01";
+$VERSION = "1.02";
 
 use fields (
     'cache',           # a Cache object to store HTTP responses and associations
@@ -1401,6 +1401,12 @@ maintainer.
 =head1 WARRANTY
 
 This is free software. IT COMES WITHOUT WARRANTY OF ANY KIND.
+
+=head1 MAILING LIST
+
+The Net::OpenID family of modules has a mailing list powered
+by Google Groups. For more information, see
+http://groups.google.com/group/openid-perl .
 
 =head1 SEE ALSO
 
