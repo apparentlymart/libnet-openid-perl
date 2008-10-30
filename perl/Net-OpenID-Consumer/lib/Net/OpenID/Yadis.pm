@@ -156,7 +156,7 @@ sub discover {
     if (($doc_url = $headers{'x-yadis-location'} || $headers{'x-xrds-location'}) && ($count < YR_XRDS)) {
         return $self->discover($doc_url, YR_XRDS);
     }
-    elsif ($headers{'content-type'} eq 'application/xrds+xml') {
+    elsif ( (split /;\s*/, $headers{'content-type'})[0] eq 'application/xrds+xml') {
         $self->xrd_url($final_url);
         return $self->parse_xrd($xrd);
     }
