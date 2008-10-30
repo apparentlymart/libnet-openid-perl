@@ -266,7 +266,7 @@ sub signed_return_url {
                assoc_handle   => $assoc_handle,
                response_nonce => _time_to_w3c($now) . _rand_chars(6),
                );
-    $arg{'op_endpoint'} = $self->endpoint_url if $self->endpoint_url;
+    $arg{'op_endpoint'} = $self->endpoint_url if $self->endpoint_url && $self->args('openid.ns') eq $OPENID2_NS;
     $arg{'ns'} = $ns if $ns;
 
     # compatibility mode with version 1.0 of the protocol which still
@@ -291,6 +291,7 @@ sub signed_return_url {
     my @arg; # arguments we'll append to the URL
     my $token_contents = "";
     foreach my $f (@sign) {
+        next unless defined $arg{$f};
         $token_contents .= "$f:$arg{$f}\n";
         push @arg, "openid.$f" => $arg{$f};
         delete $arg{$f};

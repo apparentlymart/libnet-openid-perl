@@ -1,3 +1,5 @@
+        * Don't include op_endpoint in 1.1 assertion messages.
+
 1.01:
 
 	* OpenID 2.0 support from kazeburo from mixi.jp.
