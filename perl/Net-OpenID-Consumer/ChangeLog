@@ -1,3 +1,7 @@
+        * Moved some utility bits out to a separate Net::OpenID::Common
+	  package so that Net::OpenID::Server can use it in future
+	  versions.
+
 1.02:
 
         * Declare dependency on XML::Simple

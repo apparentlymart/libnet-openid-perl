@@ -1,0 +1,13 @@
+Makefile.PL
+ChangeLog
+MANIFEST
+lib/Net/OpenID/Common.pm
+lib/Net/OpenID/IndirectMessage.pm
+lib/Net/OpenID/URIFetch.pm
+lib/Net/OpenID/Yadis.pm
+lib/Net/OpenID/Yadis/Service.pm
+t/00-use-indirectmessage.t
+t/01-use-urifetch.t
+t/02-use-yadis.t
+t/03-use-common.t
+t/04-messages.t
