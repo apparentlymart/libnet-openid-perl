@@ -6,6 +6,9 @@ lib/Net/OpenID/IndirectMessage.pm
 lib/Net/OpenID/URIFetch.pm
 lib/Net/OpenID/Yadis.pm
 lib/Net/OpenID/Yadis/Service.pm
+lib/Net/OpenID/Extension.pm
+lib/Net/OpenID/ExtensionMessage.pm
+lib/Net/OpenID/Extension/SimpleRegistration.pm
 t/00-use-indirectmessage.t
 t/01-use-urifetch.t
 t/02-use-yadis.t
