@@ -285,13 +285,14 @@ sub signed_return_url {
         push @sign, $k;
     }
 
-    # include the list of all fields we'll be signing
+    # since signing of empty fields is not well defined,
+    # remove such fields from the list of fields to be signed
+    @sign = grep { defined $arg{$_} && $arg{$_} ne '' } @sign;
     $arg{signed} = join(",", @sign);
 
     my @arg; # arguments we'll append to the URL
     my $token_contents = "";
     foreach my $f (@sign) {
-        next unless defined $arg{$f};
         $token_contents .= "$f:$arg{$f}\n";
         push @arg, "openid.$f" => $arg{$f};
         delete $arg{$f};
