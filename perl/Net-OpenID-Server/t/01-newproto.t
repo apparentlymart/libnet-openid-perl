@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use strict;
-use Test::More 'no_plan';
+use Test::More tests => 150;
 use Data::Dumper;
 use Net::OpenID::Server;
 use Crypt::DH;
@@ -11,7 +11,7 @@ for (my $num=1; $num <= 2000; $num += 20) {
     my $bi = Math::BigInt->new("$num");
     my $bytes = Net::OpenID::Server::_bi2bytes($bi);
     my $bi2 = Net::OpenID::Server::_bytes2bi($bytes);
-    is($bi,$bi2);
+    is($bi,$bi2, "$bi == $bi2");
 }
 
 
@@ -29,7 +29,7 @@ my $nos = Net::OpenID::Server->new(
                                    endpoint_url => "http://server.com/server.app",
                                    compat => 1,
                                    );
-ok($nos);
+ok($nos, "Instantiated Net::OpenID::Server");
 my ($secret, $ahandle);
 
 assoc_clear();
@@ -55,21 +55,22 @@ sub assoc_clear {
              "openid.assoc_type" => "HMAC-SHA1",
              );
     ($ctype, $content) = $nos->handle_page;
-    is($ctype, "text/plain");
+    is($ctype, "text/plain", "Content-type is text/plain");
     %res = parse_reply($content);
-    ok($res{assoc_handle});
+    ok($res{assoc_handle}, "Got assoc_handle in response");
     $ahandle = $res{'assoc_handle'};
-    ok($ahandle !~ /\bSTLS\./);
-    is($res{assoc_type}, "HMAC-SHA1");
-    ok(good_date($res{expiry}));
-    ok(good_date($res{issued}));
-    ok($res{mac_key});
-    $secret = $res{'mac_key'};
+    ok($ahandle !~ /\bSTLS\./, "assoc_handle does not match /\\bSTLS\\./");
+    is($res{assoc_type}, "HMAC-SHA1", "assoc_type is HMAC-SHA1");
+    ok(good_date($res{expiry}), "Expiry $res{expiry} is a good date");
+    ok(good_date($res{issued}), "Issued $res{issued} is a good date");
+    ok($res{mac_key}, "Response has a mac_key");
+    $secret = _d64($res{'mac_key'});
 }
 
 # DH associate
 sub assoc_dh {
     my $dh = Crypt::DH->new;
+    ok($dh, 'Instantiated Crypt::DH (the next step will take a while...)');
     $dh->p("155172898181473697471232257763715539915724801966915404479707795314057629378541917580651227423698188993727816152646631438561595825688188889951272158842675419950341258706556549803580104870537681476726513255747040765857479291291572334510643245094715007229621094194349783925984760375594985848253359305585439638443");
     $dh->g("2");
     $dh->generate_keys;
@@ -82,25 +83,25 @@ sub assoc_dh {
              );
 
     ($ctype, $content) = $nos->handle_page;
-    is($ctype, "text/plain");
+    is($ctype, "text/plain", "DH Association response type is text/plain");
     %res = parse_reply($content);
-    ok($res{assoc_handle});
-    ok($res{dh_server_public});
-    is($res{assoc_type}, "HMAC-SHA1");
-    is($res{session_type}, "DH-SHA1");
-    ok(good_date($res{expiry}));
-    ok(good_date($res{issued}));
-    ok($res{enc_mac_key});
-    ok(! $res{mac_key});
+    ok($res{assoc_handle}, "DH Association response has assoc_handle");
+    ok($res{dh_server_public}, "DH Association response has dh_server_public");
+    is($res{assoc_type}, "HMAC-SHA1", "DH assoc_type is HMAC-SHA1");
+    is($res{session_type}, "DH-SHA1", "DH session_type is DH-SHA1");
+    ok(good_date($res{expiry}), "Expiry $res{expiry} is a good date");
+    ok(good_date($res{issued}), "Issued $res{issued} is a good date");
+    ok($res{enc_mac_key}, "DH Association response has enc_mac_key");
+    ok(! $res{mac_key}, "DH Association response does not have mac_key");
 
     my $server_pub = _arg2bi($res{'dh_server_public'});
     my $dh_sec = $dh->compute_secret($server_pub);
     $ahandle = $res{'assoc_handle'};
-    ok($ahandle !~ /\bSTLS\./);
-    is(length(_d64($res{'enc_mac_key'})), 20);
-    is(length(sha1(_bi2bytes($dh_sec))),  20);
+    ok($ahandle !~ /\bSTLS\./, "assoc_handle does not match /\\bSTLS\\./");
+    is(length(_d64($res{'enc_mac_key'})), 20, "enc_mac_key is 20 characters long");
+    is(length(sha1(_bi2bytes($dh_sec))),  20, "dh_sec is 20 characters long");
     $secret = _d64($res{'enc_mac_key'}) ^ sha1(_bi2bytes($dh_sec));
-    is(length($secret), 20);
+    is(length($secret), 20, "secret is 20 characters long");
 }
 
 # try to login, with success
@@ -117,15 +118,15 @@ sub login_success {
             "openid.assoc_handle" => $ahandle,
             );
     ($ctype, $content) = $nos->handle_page;
-    is($ctype, "redirect");
-    ok($content =~ s!^http://trust.root/return/\?!!);
+    is($ctype, "redirect", "Response type is redirect");
+    ok($content =~ s!^http://trust.root/return/\?!!, "Redirect URL is as expected");
     my %rarg = map { durl($_) } split(/[\&\=]/, $content);
     my $token = "";
     foreach my $p (split(/,/, $rarg{'openid.signed'})) {
         $token .= "$p:" . $rarg{"openid.$p"} . "\n";
     }
     my $good_sig = _b64(hmac_sha1($token, $secret));
-    ok($rarg{'openid.sig'}, $good_sig);
+    is($rarg{'openid.sig'}, $good_sig, "Sig is good ($rarg{'openid.sig'} == $good_sig)");
 
     # and verify that check_authentication never lets this succeed
     %get = ();
@@ -138,9 +139,9 @@ sub login_success {
         $post{"openid.$p"} ||= $rarg{"openid.$p"};
     }
     ($ctype, $content) = $nos->handle_page;
-    is($ctype, "text/plain");
+    is($ctype, "text/plain", "Content type is text/plain");
     %rarg = parse_reply($content);
-    ok($rarg{"error"} =~ /bad_handle/);
+    ok($rarg{"error"} =~ /bad_handle/, "Expected bad_handle");
 }
 
 # try to login, with success
@@ -157,11 +158,11 @@ sub login_bogus_handle {
             "openid.assoc_handle" => "GIBBERISH",
             );
     ($ctype, $content) = $nos->handle_page;
-    is($ctype, "redirect");
-    ok($content =~ s!^http://trust.root/return/\?!!);
+    is($ctype, "redirect", "bogus handle response is redirect");
+    ok($content =~ s!^http://trust.root/return/\?!!, "redirect URL looks sane");
     my %rarg = map { durl($_) } split(/[\&\=]/, $content);
-    is($rarg{'openid.invalidate_handle'}, "GIBBERISH");
-    ok($rarg{'openid.assoc_handle'} =~ /\bSTLS\./);
+    is($rarg{'openid.invalidate_handle'}, "GIBBERISH", "invalidate_handle came back correctly");
+    ok($rarg{'openid.assoc_handle'} =~ /\bSTLS\./, "assoc_handle looks sane");
 
     # try to verify it with check_authentication
     %get = ();
@@ -174,10 +175,10 @@ sub login_bogus_handle {
         $post{"openid.$p"} ||= $rarg{"openid.$p"};
     }
     ($ctype, $content) = $nos->handle_page;
-    is($ctype, "text/plain");
+    is($ctype, "text/plain", "check_authentication response is text/plain");
     %rarg = parse_reply($content);
-    ok($rarg{"lifetime"} > 0);
-    is($rarg{"invalidate_handle"}, "GIBBERISH");
+    ok($rarg{"lifetime"} > 0, "lifetime > 0");
+    is($rarg{"invalidate_handle"}, "GIBBERISH", "invalidate_handle is present and correct");
 }
 
 # try to login, but fail (immediately)
@@ -194,12 +195,12 @@ sub login_im_fail {
             "openid.assoc_handle" => $ahandle,
             );
     ($ctype, $content) = $nos->handle_page;
-    is($ctype, "redirect");
-    ok($content =~ s!^http://trust.root/return/\?!!);
+    is($ctype, "redirect", "Failure response is redirect");
+    ok($content =~ s!^http://trust.root/return/\?!!, "redirect is to our fake consumer URL");
     my %rarg = map { durl($_) } split(/[\&\=]/, $content);
 
-    is($rarg{'openid.mode'}, "id_res");
-    ok($rarg{'openid.user_setup_url'} =~ m!setup\.app.+bradfitz!);
+    is($rarg{'openid.mode'}, "id_res", "Response mode is id_res");
+    ok($rarg{'openid.user_setup_url'} =~ m!setup\.app.+bradfitz!, "user_setup_url looks sane");
 }
 
 # try to login, but fail (w/ setup)
@@ -216,8 +217,8 @@ sub login_setup_fail {
             "openid.assoc_handle" => $ahandle,
             );
     ($ctype, $content) = $nos->handle_page;
-    is($ctype, "setup");
-    ok(ref $content eq "HASH");
+    is($ctype, "setup", "Response is of type setup");
+    ok(ref $content eq "HASH", "Content is a HASH ref");
 }
 
 # try to login, but fail (w/ setup redirect)
@@ -234,8 +235,8 @@ sub login_setup_fail2 {
             "openid.assoc_handle" => $ahandle,
             );
     ($ctype, $content) = $nos->handle_page(redirect_for_setup => 1);
-    is($ctype, "redirect");
-    ok($content =~ m!^http://.+setup\.app\?!);
+    is($ctype, "redirect", "setup response is redirect");
+    ok($content =~ m!^http://.+setup\.app\?!, "Redirect URL looks sane");
 }
 
 sub login20_success {
@@ -252,7 +253,7 @@ sub login20_success {
             "openid.assoc_handle" => $ahandle,
             );
     ($ctype, $content) = $nos->handle_page();
-    is($ctype, "redirect");
+    is($ctype, "redirect", "2.0 login success returned redirect");
 }
 
 sub login20_select_success {
@@ -271,8 +272,8 @@ sub login20_select_success {
             "openid.assoc_handle" => $ahandle,
             );
     ($ctype, $content) = $nos->handle_page();
-    is($ctype, "redirect");
-    ok($content =~ m!http://bradfitz.com/user/brad! );
+    is($ctype, "redirect", "2.0 identifier_select success returned redirect");
+    ok($content =~ m!http://bradfitz.com/user/brad!, "get_identity functioned as expected");
 }
 
 sub good_date {

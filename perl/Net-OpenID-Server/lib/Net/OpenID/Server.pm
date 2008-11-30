@@ -228,8 +228,11 @@ sub signed_return_url {
     my $ns           = delete $opts{'ns'};
     my $extra_fields = delete $opts{'additional_fields'} || {};
 
-    # verify the trust_root, if provided
-    if (my $trust_root = delete $opts{'trust_root'}) {
+    # verify the trust_root and realm, if provided
+    if (my $realm = delete $opts{'realm'}) {
+        return undef unless _url_is_under($realm, $return_to);
+        delete $opts{'trust_root'};
+    } elsif (my $trust_root = delete $opts{'trust_root'}) {
         return undef unless _url_is_under($trust_root, $return_to);
     }
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
@@ -285,13 +288,14 @@ sub signed_return_url {
         push @sign, $k;
     }
 
-    # include the list of all fields we'll be signing
+    # since signing of empty fields is not well defined,
+    # remove such fields from the list of fields to be signed
+    @sign = grep { defined $arg{$_} && $arg{$_} ne '' } @sign;
     $arg{signed} = join(",", @sign);
 
     my @arg; # arguments we'll append to the URL
     my $token_contents = "";
     foreach my $f (@sign) {
-        next unless defined $arg{$f};
         $token_contents .= "$f:$arg{$f}\n";
         push @arg, "openid.$f" => $arg{$f};
         delete $arg{$f};
@@ -358,15 +362,20 @@ sub _mode_checkid {
                       $self->_setup_map("identity"),     $identity,
                       $self->_setup_map("assoc_handle"), $self->args("openid.assoc_handle"),
                       );
-    $setup_args{'ns'}  = $self->args('openid.ns') if $self->args('openid.ns');
+    $setup_args{$self->_setup_map('ns')} = $self->args('openid.ns') if $self->args('openid.ns');
 
     my $setup_url = $self->{setup_url} or Carp::croak("No setup_url defined.");
     _push_url_arg(\$setup_url, %setup_args);
 
     if ($mode eq "checkid_immediate") {
         my $ret_url = $return_to;
-        _push_url_arg(\$ret_url, "openid.mode",           "id_res");
-        _push_url_arg(\$ret_url, "openid.user_setup_url", $setup_url);
+        if ($self->args('openid.ns') eq $OPENID2_NS) {
+            _push_url_arg(\$ret_url, "openid.ns",             $self->args('openid.ns'));
+            _push_url_arg(\$ret_url, "openid.mode",           "setup_needed");
+        } else {
+            _push_url_arg(\$ret_url, "openid.mode",           "id_res");
+            _push_url_arg(\$ret_url, "openid.user_setup_url", $setup_url);
+        }
         return ("redirect", $ret_url);
     } else {
         # the "checkid_setup" mode, where we take control of the user-agent
@@ -482,6 +491,19 @@ sub _mode_associate {
     # FUTURE: protocol will let people choose their preferred authn scheme,
     # in which case we see if we support any of them, and override the
     # default value of HMAC-SHA1
+    
+    if ($self->pargs('openid.ns') eq $OPENID2_NS &&
+        ($self->pargs('openid.assoc_type') ne $assoc_type ||
+        $self->pargs('openid.session_type') ne 'DH-SHA1')) {
+
+        $prop{'ns'}         = $self->pargs('openid.ns') if $self->pargs('openid.ns');
+        $prop{'error_code'} = "unsupported-type";
+        $prop{'error'}      = "This server support $assoc_type only.";
+        $prop{'assoc_type'} = $assoc_type;
+        $prop{'session_type'} = "DH-SHA1";
+
+        return $self->_serialized_props(\%prop);
+    }
 
     my ($assoc_handle, $secret, $expires) =
         $self->_generate_association(type => $assoc_type);

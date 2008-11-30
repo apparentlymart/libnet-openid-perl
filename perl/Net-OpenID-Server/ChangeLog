@@ -1,3 +1,23 @@
+        * _mode_checkid(): Pass 'ns' through setup_map.
+          (reported and fixed by Sergey Homenkow.)
+
+        * signed_return_url(): verify and remove 'realm', if provided.
+          (reported and fixed by Sergey Homenkow.)
+
+        * "10.2.1. In Response to Immediate Requests" (Negative Assertions)
+          OpenID2 return 'mode=setup_needed' and 'ns',
+          OpenID1 return 'mode=id_res' and 'user_setup_url'.
+	  (reported and fixed by Sergey Homenkow.)
+
+	* "8.2.4. Unsuccessful Response Parameters" (Establishing Associations)
+          "If the OP does not support a session type or association type, it MUST
+          respond with a direct error message indicating that the association
+          request failed." (reported and fixed by Sergey Homenkow.)
+
+        * Fix our openid.signed list to be consistent with what we
+          actually sign when empty fields are present.
+          Reported and fixed by Igor Gariev <gariev@hotmail.com>.
+
         * Don't include op_endpoint in 1.1 assertion messages.
 
 1.01:
