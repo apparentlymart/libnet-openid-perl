@@ -742,9 +742,7 @@ sub verified_identity {
 
         # if openid.delegate was used, check that it was done correctly
         if ($a_ident_nofragment ne $real_ident_nofragment) {
-            my $a_ident_nofragment = $a_ident;
-            $a_ident_nofragment =~ s/\#.*$//;
-            unless ($delegate eq $a_ident) {
+            unless ($delegate eq $a_ident_nofragment) {
                 $error->("bogus_delegation");
                 next;
             }
