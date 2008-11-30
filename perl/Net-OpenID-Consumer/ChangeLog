@@ -2,6 +2,19 @@
 	  package so that Net::OpenID::Server can use it in future
 	  versions.
 
+1.03:
+
+        * Enforce the rules from the Auth 2.0 spec about which fields
+          MUST be signed in positive assertion messages.
+
+	* Return a more sensible error (no_head_tag) if the identifier
+	  URL returns an empty (0-byte) HTML document.
+
+	* Verify delegate on the non-fragment version of the resulting
+	  identifier, so that you can delegate to providers that add
+	  fragments to their identifiers.
+	  Found and fixed by avarix <mindsectr@gmail.com>.
+
 1.02:
 
         * Declare dependency on XML::Simple
