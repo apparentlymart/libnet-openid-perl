@@ -774,6 +774,27 @@ sub verified_identity {
 
     my %signed_fields;   # key (without openid.) -> value
 
+    # Auth 2.0 requires certain keys to be signed.
+    if ($self->_message_version >= 2) {
+        my %signed_fields = map {$_ => 1} split /,/, $signed;
+        my %unsigned_fields;
+        # these fields must be signed unconditionally
+        foreach my $f (qw/op_endpoint return_to response_nonce assoc_handle/) {
+            $unsigned_fields{$f}++ if !$signed_fields{$f};
+        }
+        # these fields must be signed if present
+        foreach my $f (qw/claimed_id identity/) {
+            next unless $self->args("openid.$f");
+            $unsigned_fields{$f}++ if !$signed_fields{$f};
+        }
+        if (%unsigned_fields) {
+            return $self->_fail(
+                "unsigned_field",
+                "Field(s) must be signed: " . join(", ", keys %unsigned_fields)
+            );
+        }
+    }
+
     if ($assoc) {
         $self->_debug("verified_identity: verifying with found association");
 
