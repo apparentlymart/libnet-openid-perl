@@ -59,12 +59,12 @@ sub assoc_clear {
     %res = parse_reply($content);
     ok($res{assoc_handle}, "Got assoc_handle in response");
     $ahandle = $res{'assoc_handle'};
-    ok($ahandle !~ /\bSTLS\./, "assoc_handle matches /\\BSTLS\\./");
+    ok($ahandle !~ /\bSTLS\./, "assoc_handle does not match /\\bSTLS\\./");
     is($res{assoc_type}, "HMAC-SHA1", "assoc_type is HMAC-SHA1");
     ok(good_date($res{expiry}), "Expiry $res{expiry} is a good date");
     ok(good_date($res{issued}), "Issued $res{issued} is a good date");
     ok($res{mac_key}, "Response has a mac_key");
-    $secret = $res{'mac_key'};
+    $secret = _d64($res{'mac_key'});
 }
 
 # DH associate
@@ -97,7 +97,7 @@ sub assoc_dh {
     my $server_pub = _arg2bi($res{'dh_server_public'});
     my $dh_sec = $dh->compute_secret($server_pub);
     $ahandle = $res{'assoc_handle'};
-    ok($ahandle !~ /\bSTLS\./, "assoc_handle matches /\\bSTLS\\./");
+    ok($ahandle !~ /\bSTLS\./, "assoc_handle does not match /\\bSTLS\\./");
     is(length(_d64($res{'enc_mac_key'})), 20, "enc_mac_key is 20 characters long");
     is(length(sha1(_bi2bytes($dh_sec))),  20, "dh_sec is 20 characters long");
     $secret = _d64($res{'enc_mac_key'}) ^ sha1(_bi2bytes($dh_sec));
