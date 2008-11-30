@@ -1,3 +1,6 @@
+	* Return a more sensible error (no_head_tag) if the identifier
+	  URL returns an empty (0-byte) HTML document.
+
 	* Verify delegate on the non-fragment version of the resulting
 	  identifier, so that you can delegate to providers that add
 	  fragments to their identifiers.

@@ -229,8 +229,7 @@ sub _find_semantic_info {
         $$htmlref =~ s/<body\b.*//is;
     };
 
-    my $doc = $self->_get_url_contents($url, $final_url_ref, $trim_hook) or
-        return;
+    my $doc = $self->_get_url_contents($url, $final_url_ref, $trim_hook) || '';
 
     # find <head> content of document (notably: the first head, if an attacker
     # has added others somehow)
