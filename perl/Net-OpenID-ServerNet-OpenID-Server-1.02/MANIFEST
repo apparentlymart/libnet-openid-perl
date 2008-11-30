@@ -1,8 +1,0 @@
-Makefile.PL
-ChangeLog
-MANIFEST
-lib/Net/OpenID/Server.pm
-t/00-all.t
-t/01-newproto.t
-doc/catalyst_sample
-
