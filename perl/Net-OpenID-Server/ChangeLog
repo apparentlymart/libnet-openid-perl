@@ -1,3 +1,5 @@
+1.02:
+
         * _mode_checkid(): Pass 'ns' through setup_map.
           (reported and fixed by Sergey Homenkow.)
 
