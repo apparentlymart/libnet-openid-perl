@@ -1,3 +1,5 @@
+1.03:
+
         * Enforce the rules from the Auth 2.0 spec about which fields
           MUST be signed in positive assertion messages.
 
