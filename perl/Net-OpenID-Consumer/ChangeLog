@@ -1,3 +1,7 @@
+        * In Net::OpenID::Yadis, use the single-constant form of
+          "use constant" so we work under Perl 5.6 where the multi
+          constant form was not available.
+
 1.03:
 
         * Enforce the rules from the Auth 2.0 spec about which fields
