@@ -13,10 +13,8 @@ use Net::OpenID::Yadis::Service;
 
 @EXPORT = qw(YR_HEAD YR_GET YR_XRDS);
 
-use constant {
-    YR_GET => 1,
-    YR_XRDS => 2,
-};
+use constant YR_GET => 1;
+use constant YR_XRDS => 2;
 
 use fields (
             'last_errcode',    # last error code we got
