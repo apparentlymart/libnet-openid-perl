@@ -374,8 +374,11 @@ sub _mode_checkid {
             _push_url_arg(\$ret_url, "openid.mode",           "setup_needed");
         } else {
             _push_url_arg(\$ret_url, "openid.mode",           "id_res");
-            _push_url_arg(\$ret_url, "openid.user_setup_url", $setup_url);
         }
+        # We send this even in the 2.0 case -- despite what the spec says --
+        # because several consumer implementations, including Net::OpenID::Consumer
+        # at this time, depend on it.
+        _push_url_arg(\$ret_url, "openid.user_setup_url", $setup_url);
         return ("redirect", $ret_url);
     } else {
         # the "checkid_setup" mode, where we take control of the user-agent
