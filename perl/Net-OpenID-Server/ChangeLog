@@ -1,3 +1,6 @@
+        * Send user_setup_url even in the 2.0 case, because several
+	  consumer implementations depend on it.
+
 1.02:
 
         * _mode_checkid(): Pass 'ns' through setup_map.
