@@ -611,14 +611,16 @@ sub user_setup_url {
     my $post_grant = delete $opts{'post_grant'};
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
 
+    my $setup_url = undef;
+
     if ($self->_message_version == 1) {
         return $self->_fail("bad_mode") unless $self->_message_mode eq "id_res";
+        $setup_url = $self->message("user_setup_url");
     }
     else {
         return undef unless $self->_message_mode eq 'setup_needed';
+        $setup_url = $self->message("user_setup_url");
     }
-
-    my $setup_url = $self->message("user_setup_url");
 
     OpenID::util::push_url_arg(\$setup_url, "openid.post_grant", $post_grant)
         if $setup_url && $post_grant;
