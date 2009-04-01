@@ -3,7 +3,7 @@ package Net::OpenID::IndirectMessage;
 
 use strict;
 use Carp;
-use Net::OpenID::Consumer;
+use Net::OpenID::Common;
 
 sub new {
     my $class = shift;
