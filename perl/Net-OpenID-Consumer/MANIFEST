@@ -8,5 +8,5 @@ lib/Net/OpenID/Association.pm
 t/00-use.t
 t/01-misc.t
 t/02-canonical.t
-t/03-messages.t
+
 
