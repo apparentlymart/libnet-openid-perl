@@ -2,6 +2,8 @@
 
 use strict;
 use Carp ();
+use lib "../Net-OpenID-Common/lib";
+use Net::OpenID::IndirectMessage;
 
 ############################################################################
 package Net::OpenID::Server;
@@ -27,6 +29,9 @@ use fields (
                                # to know about their identity.  if you don't care about timing attacks, you can
                                # immediately return 0 if ! $is_identity, as the entire case can't succeed
                                # unless both is_identity and is_trusted pass, and is_identity is called first.
+
+            'handle_request',  # callback to handle a request. If present, get_user, get_identity, is_identity and is_trusted
+                               # are all ignored and this single callback is used to replace all of them.
             'endpoint_url',
 
             'setup_url',       # setup URL base (optionally with query parameters) where users should go
@@ -35,8 +40,8 @@ use fields (
             'setup_map',       # optional hashref mapping some/all standard keys that would be added to
                                # setup_url to your preferred names.
 
-            'get_args',        # thing to get get args
-            'post_args',       # thing to get post args
+            'args',            # thing to get args
+            'message',         # current IndirectMessage object
 
             'server_secret',    # subref returning secret given $time
             'secret_gen_interval',
@@ -63,8 +68,7 @@ sub new {
     $self->{last_errcode} = undef;
     $self->{last_errtext} = undef;
 
-    $self->get_args(delete $opts{get_args} || delete $opts{args});
-    $self->post_args(delete $opts{post_args});
+    $self->args(delete $opts{args});
 
     $opts{'secret_gen_interval'} ||= 86400;
     $opts{'secret_expire_age'}   ||= 86400 * 14;
@@ -78,7 +82,7 @@ sub new {
 
     $self->$_(delete $opts{$_})
         foreach (qw(
-                    get_user get_identity is_identity is_trusted
+                    get_user get_identity is_identity is_trusted handle_request
                     endpoint_url setup_url setup_map server_secret
                     secret_gen_interval secret_expire_age
                     compat
@@ -92,6 +96,7 @@ sub get_user     { &_getsetcode; }
 sub get_identity { &_getsetcode; }
 sub is_identity  { &_getsetcode; }
 sub is_trusted   { &_getsetcode; }
+sub handle_request { &_getsetcode; }
 
 sub endpoint_url { &_getset; }
 sub setup_url    { &_getset; }
@@ -117,13 +122,14 @@ sub handle_page {
     Carp::croak("Unknown options: " . join(", ", keys %opts)) if %opts;
     Carp::croak("handle_page must be called in list context") unless wantarray;
 
+    my $mode = $self->_message_mode;
+
     return $self->_mode_associate
-        if $self->pargs("openid.mode") eq "associate";
+        if $self->_message_mode eq "associate";
 
     return $self->_mode_check_authentication
-        if $self->pargs("openid.mode") eq "check_authentication";
+        if $self->_message_mode eq "check_authentication";
 
-    my $mode = $self->args("openid.mode");
     unless ($mode) {
         return ("text/html",
                 "<html><head><title>OpenID Endpoint</title></head><body>This is an OpenID server endpoint, not a human-readable resource.  For more information, see <a href='http://openid.net/'>http://openid.net/</a>.</body></html>");
@@ -135,7 +141,6 @@ sub handle_page {
     return $self->_mode_checkid($mode, $redirect_for_setup);
 }
 
-
 # given something that can have GET arguments, returns a subref to get them:
 #   Apache
 #   Apache::Request
@@ -145,65 +150,48 @@ sub handle_page {
 
 #   ...
 
-# GET args
-*args = \&get_args;
-sub get_args {
+sub args {
     my Net::OpenID::Server $self = shift;
 
     if (my $what = shift) {
-        Carp::croak("Too many parameters") if @_;
-        my $getter;
-        if (! ref $what){
-            Carp::croak("No get_args defined") unless $self->{get_args};
-            return $self->{get_args}->($what) || "";
-        } elsif (ref $what eq "HASH") {
-            $getter = sub { $what->{$_[0]}; };
-        } elsif (ref $what eq "CGI") {
-            $getter = sub { scalar $what->param($_[0]); };
-        } elsif (ref $what eq "Apache") {
-            my %get = $what->args;
-            $getter = sub { $get{$_[0]}; };
-        } elsif (ref $what eq "Apache::Request") {
-            $getter = sub { scalar $what->param($_[0]); };
-        } elsif (ref $what eq "CODE") {
-            $getter = $what;
-        } else {
-            Carp::croak("Unknown parameter type ($what)");
+        unless (ref $what) {
+            return $self->{args} ? $self->{args}->($what) : Carp::croak("No args defined");
         }
-        if ($getter) {
-            $self->{get_args} = $getter;
+        else {
+            Carp::croak("Too many parameters") if @_;
+            my $message = Net::OpenID::IndirectMessage->new($what, (
+                minimum_version => $self->minimum_version,
+            ));
+            $self->{message} = $message;
+            $self->{args} = $message ? $message->getter : sub { undef };
         }
     }
-    $self->{get_args};
+    $self->{args};
 }
 
-# POST args
-*pargs = \&post_args;
-sub post_args {
+sub message {
     my Net::OpenID::Server $self = shift;
-
-    if (my $what = shift) {
-        Carp::croak("Too many parameters") if @_;
-        my $getter;
-        if (! ref $what){
-            Carp::croak("No pargs defined") unless $self->{post_args};
-            return $self->{post_args}->($what) || "";
-        } elsif (ref $what eq "HASH") {
-            $getter = sub { $what->{$_[0]}; };
-        } elsif (ref $what eq "CGI") {
-            $getter = sub { scalar $what->param($_[0]); };
-        } elsif (ref $what eq "Apache::Request") {
-            $getter = sub { scalar $what->param($_[0]); };
-        } elsif (ref $what eq "CODE") {
-            $getter = $what;
-        } else {
-            Carp::croak("Unknown parameter type ($what)");
-        }
-        if ($getter) {
-            $self->{post_args} = $getter;
-        }
+    if (my $key = shift) {
+        return $self->{message} ? $self->{message}->get($key) : undef;
     }
-    $self->{post_args};
+    else {
+        return $self->{message};
+    }
+}
+
+sub minimum_version {
+    # TODO: Make this configurable
+    1;
+}
+
+sub _message_mode {
+    my $message = $_[0]->message;
+    return $message ? $message->mode : undef;
+}
+
+sub _message_version {
+    my $message = $_[0]->message;
+    return $message ? $message->protocol_version : undef;
 }
 
 sub cancel_return_url {
@@ -332,12 +320,20 @@ sub _mode_checkid {
     # chop off the query string, in case our trust_root came from the return_to URL
     $trust_root =~ s/\?.*//;
 
-    my $u = $self->_proxy("get_user");
-    if ( $self->args('openid.ns') eq $OPENID2_NS && $identity eq $OPENID2_ID_SELECT ) {
-        $identity = $self->_proxy("get_identity",  $u, $identity );
+    my $is_identity = 0;
+    my $is_trusted = 0;
+    if (0 && $self->{handle_request}) {
+
+
     }
-    my $is_identity = $self->_proxy("is_identity", $u, $identity);
-    my $is_trusted  = $self->_proxy("is_trusted",  $u, $trust_root, $is_identity);
+    else {
+        my $u = $self->_proxy("get_user");
+        if ( $self->args('openid.ns') eq $OPENID2_NS && $identity eq $OPENID2_ID_SELECT ) {
+            $identity = $self->_proxy("get_identity",  $u, $identity );
+        }
+        $is_identity = $self->_proxy("is_identity", $u, $identity);
+        $is_trusted  = $self->_proxy("is_trusted",  $u, $trust_root, $is_identity);
+    }
 
     # assertion path:
     if ($is_identity && $is_trusted) {
@@ -495,11 +491,11 @@ sub _mode_associate {
     # in which case we see if we support any of them, and override the
     # default value of HMAC-SHA1
     
-    if ($self->pargs('openid.ns') eq $OPENID2_NS &&
-        ($self->pargs('openid.assoc_type') ne $assoc_type ||
-        $self->pargs('openid.session_type') ne 'DH-SHA1')) {
+    if ($self->message('ns') eq $OPENID2_NS &&
+        ($self->message('assoc_type') ne $assoc_type ||
+        $self->message('session_type') ne 'DH-SHA1')) {
 
-        $prop{'ns'}         = $self->pargs('openid.ns') if $self->pargs('openid.ns');
+        $prop{'ns'}         = $self->message('ns') if $self->message('ns');
         $prop{'error_code'} = "unsupported-type";
         $prop{'error'}      = "This server support $assoc_type only.";
         $prop{'assoc_type'} = $assoc_type;
@@ -517,7 +513,7 @@ sub _mode_associate {
     # make relative form of expires
     my $exp_rel = $exp_abs - $now;
 
-    $prop{'ns'}   = $self->pargs('openid.ns') if $self->pargs('openid.ns');
+    $prop{'ns'}   = $self->args('openid.ns') if $self->args('openid.ns');
     $prop{'assoc_type'}   = $assoc_type;
     $prop{'assoc_handle'} = $assoc_handle;
     $prop{'expires_in'}   = $exp_rel;
@@ -527,12 +523,12 @@ sub _mode_associate {
         $prop{'issued'}   = _time_to_w3c($now);
     }
 
-    if ($self->pargs("openid.session_type") eq "DH-SHA1") {
+    if ($self->args("openid.session_type") eq "DH-SHA1") {
 
         my $dh   = Crypt::DH->new;
-        my $p    = _arg2bi($self->pargs("openid.dh_modulus")) || _default_p();
-        my $g    = _arg2bi($self->pargs("openid.dh_gen"))     || _default_g();
-        my $cpub = _arg2bi($self->pargs("openid.dh_consumer_public"));
+        my $p    = _arg2bi($self->args("openid.dh_modulus")) || _default_p();
+        my $g    = _arg2bi($self->args("openid.dh_gen"))     || _default_g();
+        my $cpub = _arg2bi($self->args("openid.dh_consumer_public"));
 
         return $self->_error_page("invalid dh params p=$p, g=$g, cpub=$cpub")
             unless $p > 10 && $g > 1 && $cpub;
@@ -557,18 +553,18 @@ sub _mode_associate {
 sub _mode_check_authentication {
     my Net::OpenID::Server $self = shift;
 
-    my $signed = $self->pargs("openid.signed") || "";
+    my $signed = $self->args("openid.signed") || "";
     my $token = "";
     foreach my $param (split(/,/, $signed)) {
         next unless $param =~ /^[\w\.]+$/;
-        my $val = $param eq "mode" ? "id_res" : $self->pargs("openid.$param");
+        my $val = $param eq "mode" ? "id_res" : $self->args("openid.$param");
         next unless defined $val;
         next if $val =~ /\n/;
         $token .= "$param:$val\n";
     }
 
-    my $sig = $self->pargs("openid.sig");
-    my $ahandle = $self->pargs("openid.assoc_handle")
+    my $sig = $self->args("openid.sig");
+    my $ahandle = $self->args("openid.assoc_handle")
         or return $self->_error_page("no_assoc_handle");
 
     my $c_sec = $self->_secret_of_handle($ahandle, dumb => 1)
@@ -581,7 +577,7 @@ sub _mode_check_authentication {
     my $ret = {
         is_valid => $is_valid ? "true" : "false",
     };
-    $ret->{'ns'}   = $self->pargs('openid.ns') if $self->pargs('openid.ns');
+    $ret->{'ns'}   = $self->args('openid.ns') if $self->args('openid.ns');
 
     if ($self->{compat}) {
         $ret->{lifetime} = 3600;
@@ -592,7 +588,7 @@ sub _mode_check_authentication {
     }
 
     # tell them if a handle they asked about is invalid, too
-    if (my $ih = $self->pargs("openid.invalidate_handle")) {
+    if (my $ih = $self->args("openid.invalidate_handle")) {
         $c_sec = $self->_secret_of_handle($ih);
         $ret->{"invalidate_handle"} = $ih unless $c_sec;
     }
