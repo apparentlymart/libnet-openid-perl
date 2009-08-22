@@ -1,5 +1,5 @@
 use ExtUtils::MakeMaker;
-WriteMakefile( 'NAME' => 'Net::OpenID::Consumer',
+WriteMakefile1('NAME' => 'Net::OpenID::Consumer',
                'VERSION_FROM' => 'lib/Net/OpenID/Consumer.pm',
                'PREREQ_PM'		=> {
                    'LWP::UserAgent' => 0,
@@ -9,8 +9,19 @@ WriteMakefile( 'NAME' => 'Net::OpenID::Consumer',
                    'Crypt::DH'      => 0.05,
                    'Net::OpenID::Common' => 1.01,
                },
+               'BUILD_REQUIRES' => {
+                   'Test::More'     => 0,
+               },
+               'LICENSE' => 'perl',
+               'MIN_PERL_VERSION'  => 5.006, #warnings.pm
                ABSTRACT_FROM => 'lib/Net/OpenID/Consumer.pm',
                AUTHOR     => 'Brad Fitzpatrick <brad@danga.com>',
+               META_MERGE => {
+                   resources => {
+                       repository => 'http://github.com/apparentlymart/libnet-openid-perl/tree',
+                   },
+                   keywords => ['openid','openid client','openid consumer'],
+               },
              );
 
 
